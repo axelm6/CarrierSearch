@@ -251,8 +251,7 @@
               <label>Authority status</label>
               <div class="sel-wrap">
                 <select id="auth-filter">
-                  <option value="A">Allowed to operate (Y)</option>
-                  <option value="">All statuses</option>
+                  <option value="A">Allowed to operate · No brokers</option>
                 </select>
               </div>
             </div>
@@ -354,11 +353,9 @@
 const API = '';  // same origin
 
 const KEYWORDS = [
-  'transport','logistics','freight','express','trucking','carrier',
-  'hauling','delivery','shipping','transit','lines','moving',
-  'distribution','solutions','services','group','enterprises',
-  'inc','llc','corp','industries','national','american','united',
-  'pacific','atlantic','southern','northern','eastern','western'
+  'transport','logistics','freight','express','trucking',
+  'carrier','hauling','shipping','lines','inc',
+  'llc','corp','national','american','services'
 ];
 
 const STATES = [
@@ -445,45 +442,43 @@ async function runSearch() {
   const kws = nameKw ? [nameKw] : KEYWORDS;
   let done = 0;
 
-  for (const kw of kws) {
-    for (const start of [0, 50]) {
-      try {
-        const data  = await fetchKw(kw, start);
-        const items = data?.content || [];
-        let added = 0;
-
-        for (const c of items) {
-          const dot = String(c.dotNumber || c.dot || '');
-          if (!dot || seen.has(dot)) continue;
-          if ((c.phyState || '').toUpperCase() !== state.toUpperCase()) continue;
-          if (city) {
-            const cc = (c.phyCity || '').toLowerCase();
-            if (!cc.includes(city)) continue;
+  // Process keywords in parallel batches of 5 for speed
+  const BATCH = 5;
+  for (let b = 0; b < kws.length; b += BATCH) {
+    const batch = kws.slice(b, b + BATCH);
+    await Promise.all(batch.map(async (kw) => {
+      for (const start of [0, 50]) {
+        try {
+          const data  = await fetchKw(kw, start);
+          const items = data?.content || [];
+          for (const c of items) {
+            const dot = String(c.dotNumber || c.dot || '');
+            if (!dot || seen.has(dot)) continue;
+            if ((c.phyState || '').toUpperCase() !== state.toUpperCase()) continue;
+            if (city) {
+              const cc = (c.phyCity || '').toLowerCase();
+              if (!cc.includes(city)) continue;
+            }
+            // Must be allowed to operate
+            if (c.allowedToOperate !== 'Y') continue;
+            // Must not be a broker-only entity
+            const censusDesc = (c.censusTypeId && c.censusTypeId.censusTypeDesc) || '';
+            if (censusDesc.toUpperCase() === 'BROKER') continue;
+            const brokerAuth = (c.brokerAuthorityStatus || '').toUpperCase();
+            const commonAuth = (c.commonAuthorityStatus || '').toUpperCase();
+            const contractAuth = (c.contractAuthorityStatus || '').toUpperCase();
+            // Skip if ONLY broker authority with no carrier authority
+            if (brokerAuth === 'A' && commonAuth !== 'A' && contractAuth !== 'A') continue;
+            seen.add(dot); allResults.push(c);
           }
-          if (auth === 'A' && c.allowedToOperate !== 'Y') continue;
-          // Exclude brokers — only want actual motor carriers
-          const censusType = (c.censusTypeId && c.censusTypeId.censusTypeDesc) ? c.censusTypeId.censusTypeDesc : (c.censusType || '');
-          if (censusType.toUpperCase() === 'BROKER') continue;
-          // Exclude entities with broker authority but no carrier operation
-          const brokerAuth = (c.brokerAuthorityStatus || '').toUpperCase();
-          const commonAuth = (c.commonAuthorityStatus || '').toUpperCase();
-          const contractAuth = (c.contractAuthorityStatus || '').toUpperCase();
-          // If only broker authority and no carrier authority at all, skip
-          if (brokerAuth === 'A' && commonAuth !== 'A' && contractAuth !== 'A') continue;
-          seen.add(dot); allResults.push(c); added++;
-        }
-        if (items.length < 50) break;
-      } catch(e) {
-        // silently skip failed keywords
-        break;
+          if (items.length < 50) break;
+        } catch(e) { break; }
       }
-    }
-
-    done++;
+    }));
+    done += batch.length;
     const pct = Math.round((done / kws.length) * 100);
     pb.style.width = pct + '%';
-    pl.textContent = `Keyword ${done}/${kws.length} — ${allResults.length} carriers found in ${state}`;
-
+    pl.textContent = `Batch ${Math.ceil(b/BATCH)+1}/${Math.ceil(kws.length/BATCH)} — ${allResults.length} carriers found in ${state}`;
     if (!nameKw && allResults.length >= 600) break;
   }
 
