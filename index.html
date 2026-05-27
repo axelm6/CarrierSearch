@@ -425,76 +425,53 @@ async function runSearch() {
     <div class="state-box">
       <div class="spinner"></div>
       <div class="st">Searching carriers in ${state}…</div>
-      <div class="ss" id="ls" style="font-family:'DM Mono',monospace;font-size:11px;">Starting…</div>
+      <div class="ss" style="font-family:'DM Mono',monospace;font-size:11px;">Querying FMCSA — results appear shortly</div>
     </div>`;
 
   const pw = document.getElementById('pw');
   const pb = document.getElementById('pb');
-  const pl = document.getElementById('pl');
-  pw.style.display = 'block'; pb.style.width = '5%';
-  pl.style.display = 'block'; pl.textContent = '';
+  pw.style.display = 'block'; pb.style.width = '10%';
 
   const kws = nameKw ? [nameKw] : KEYWORDS;
-  let completed = 0;
 
-  function addCarrier(c) {
+  function isCarrier(c) {
     const dot = String(c.dotNumber || c.dot || '');
-    if (!dot || seen.has(dot)) return;
-    if ((c.phyState || '').toUpperCase() !== state.toUpperCase()) return;
-    if (city && !(c.phyCity || '').toLowerCase().includes(city)) return;
+    if (!dot || seen.has(dot)) return false;
+    if ((c.phyState || '').toUpperCase() !== state.toUpperCase()) return false;
+    if (city && !(c.phyCity || '').toLowerCase().includes(city)) return false;
     const censusDesc = (c.censusTypeId && c.censusTypeId.censusTypeDesc) || '';
-    if (censusDesc.toUpperCase() === 'BROKER') return;
+    if (censusDesc.toUpperCase() === 'BROKER') return false;
     const bAuth = (c.brokerAuthorityStatus || '').toUpperCase();
     const cAuth = (c.commonAuthorityStatus || '').toUpperCase();
     const ctAuth = (c.contractAuthorityStatus || '').toUpperCase();
-    if (bAuth === 'A' && cAuth !== 'A' && ctAuth !== 'A') return;
+    if (bAuth === 'A' && cAuth !== 'A' && ctAuth !== 'A') return false;
     seen.add(dot);
-    allResults.push(c);
+    return true;
   }
 
-  function refresh() {
-    const pct = Math.round((completed / kws.length) * 100);
-    pb.style.width = Math.max(pct, 5) + '%';
-    pl.textContent = `${allResults.length} carriers in ${state} · ${completed}/${kws.length} queries done`;
-    updateStats(allResults);
-    if (allResults.length > 0) {
-      // Clear spinner and show table immediately
-      const area = document.getElementById('results-area');
-      if (area.querySelector('.spinner')) {
-        area.innerHTML = ''; // clear spinner first
-      }
-      renderTable(allResults.slice(0, pgSz), 0, pgSz);
-    } else {
-      const ls = document.getElementById('ls');
-      if (ls) ls.textContent = 'Searching…';
-    }
-  }
-
-  // Fire ALL keywords fully in parallel — no batching
-  const allFetches = kws.map(kw =>
+  // Fire all keyword searches in parallel, collect results
+  await Promise.all(kws.map(kw =>
     fetch(`/api/carriers?name=${encodeURIComponent(kw)}&size=50&start=0`)
       .then(r => r.json())
       .then(data => {
-        (data.content || []).forEach(c => addCarrier(c));
-        completed++;
-        refresh();
+        (data.content || []).forEach(c => { if (isCarrier(c)) allResults.push(c); });
+        pb.style.width = '80%';
       })
-      .catch(() => { completed++; refresh(); })
-  );
+      .catch(() => {})
+  ));
 
-  await Promise.all(allFetches);
-
-  pw.style.display = 'none'; pl.style.display = 'none';
+  // All done — render
+  pb.style.width = '100%';
   updateStats(allResults);
   renderPage(0, pgSz);
   document.getElementById('s-status').textContent =
     allResults.length
       ? `✓ ${allResults.length} carriers found in ${state}`
       : 'No carriers found — try a different state';
+  pw.style.display = 'none';
   document.getElementById('search-btn').disabled = false;
   searching = false;
 }
-
 
 function loadMore(start) {
   runSearch(start);
