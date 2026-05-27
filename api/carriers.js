@@ -17,7 +17,7 @@ function fetchJSON(url) {
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   const { name } = req.query;
-  const size  = parseInt(req.query.size)  || 50;
+  const size  = parseInt(req.query.size)  || 100;
   const start = parseInt(req.query.start) || 0;
   if (!name) return res.status(400).json({ error: 'name param required' });
 
