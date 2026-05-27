@@ -251,7 +251,7 @@
               <label>Authority status</label>
               <div class="sel-wrap">
                 <select id="auth-filter">
-                  <option value="A">Allowed to operate · No brokers</option>
+                  <option value="A">Motor carriers only · No brokers</option>
                 </select>
               </div>
             </div>
@@ -355,7 +355,10 @@ const API = '';  // same origin
 const KEYWORDS = [
   'transport','logistics','freight','express','trucking',
   'carrier','hauling','shipping','lines','inc',
-  'llc','corp','national','american','services'
+  'llc','corp','national','american','services',
+  'group','moving','delivery','transit','solutions',
+  'distribution','industries','western','eastern','southern',
+  'northern','pacific','atlantic','united','global'
 ];
 
 const STATES = [
@@ -447,7 +450,7 @@ async function runSearch() {
     if (!dot || seen.has(dot)) return false;
     if ((c.phyState || '').toUpperCase() !== state.toUpperCase()) return false;
     if (city && !(c.phyCity || '').toLowerCase().includes(city)) return false;
-    if (c.allowedToOperate !== 'Y') return false;
+    // Exclude brokers only — show all carrier statuses
     const censusDesc = (c.censusTypeId && c.censusTypeId.censusTypeDesc) || '';
     if (censusDesc.toUpperCase() === 'BROKER') return false;
     const brokerAuth = (c.brokerAuthorityStatus || '').toUpperCase();
