@@ -464,17 +464,14 @@ async function runSearch() {
   function liveUpdate() {
     updateStats(allResults);
     if (!allResults.length) return;
-    if (firstRender) {
-      firstRender = false;
-      renderPage(0, pgSz);
-    } else {
-      // Update the count line without re-rendering the full table
-      const countEl = document.querySelector('.results-count');
-      if (countEl) {
-        const total = allResults.length;
-        const e2 = Math.min(pgSz, total);
-        countEl.innerHTML = `Showing <strong>1–${e2}</strong> of <strong>${total}</strong> carriers in <strong>${state}</strong> <span style="color:var(--text3);font-size:11px;font-family:'DM Mono',monospace;">· loading more…</span>`;
-      }
+    // Always re-render the table so results appear live
+    renderPage(0, pgSz);
+    // Add "loading more" indicator to the count
+    const countEl = document.querySelector('.results-count');
+    if (countEl && searching) {
+      const total = allResults.length;
+      const e2 = Math.min(pgSz, total);
+      countEl.innerHTML = `Showing <strong>1–${e2}</strong> of <strong>${total}</strong> carriers in <strong>${state}</strong> <span style="color:var(--blue);font-size:11px;font-family:'DM Mono',monospace;">· fetching more…</span>`;
     }
   }
 
