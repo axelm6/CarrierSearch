@@ -859,18 +859,7 @@ function refreshMapColors() {
   }
 }
 
-// After every search, update map count for that state
-const _origUpdateStats = updateStats;
-function updateStats(c) {
-  _origUpdateStats(c);
-  const state = document.getElementById('sel-state').value;
-  if (state && c.length > 0) {
-    STATE_COUNTS[state] = c.length;
-    refreshMapColors();
-    document.getElementById('map-status').textContent =
-      Object.keys(STATE_COUNTS).length + ' state(s) searched';
-  }
-}
+// map stats update removed
 // ── End Map ──────────────────────────────────────────────────────────
 
 </script>
