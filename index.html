@@ -419,7 +419,6 @@ async function runSearch() {
 
   const city   = document.getElementById('inp-city').value.trim().toLowerCase();
   const nameKw = document.getElementById('name-kw').value.trim().toLowerCase();
-  const auth   = document.getElementById('auth-filter').value;
   const pgSz   = parseInt(document.getElementById('page-size').value);
 
   allResults = [];
@@ -427,10 +426,10 @@ async function runSearch() {
   document.getElementById('search-btn').disabled = true;
   document.getElementById('pag-row').style.display = 'none';
   document.getElementById('results-area').innerHTML = `
-    <div class="state-box">
+    <div class="state-box" id="loading-box">
       <div class="spinner"></div>
-      <div class="st" id="lt">Fetching carriers in ${state}…</div>
-      <div class="ss" id="ls">Querying FMCSA across multiple carrier name keywords</div>
+      <div class="st">Searching carriers in ${state}…</div>
+      <div class="ss" id="ls" style="font-family:'DM Mono',monospace;font-size:11px;">Starting…</div>
     </div>`;
 
   const pw = document.getElementById('pw');
@@ -441,44 +440,62 @@ async function runSearch() {
 
   const kws = nameKw ? [nameKw] : KEYWORDS;
   let done = 0;
+  let firstRender = true;
 
-  // Process keywords in parallel batches of 5 for speed
+  function tryCarrier(c) {
+    const dot = String(c.dotNumber || c.dot || '');
+    if (!dot || seen.has(dot)) return false;
+    if ((c.phyState || '').toUpperCase() !== state.toUpperCase()) return false;
+    if (city && !(c.phyCity || '').toLowerCase().includes(city)) return false;
+    if (c.allowedToOperate !== 'Y') return false;
+    const censusDesc = (c.censusTypeId && c.censusTypeId.censusTypeDesc) || '';
+    if (censusDesc.toUpperCase() === 'BROKER') return false;
+    const brokerAuth = (c.brokerAuthorityStatus || '').toUpperCase();
+    const commonAuth = (c.commonAuthorityStatus || '').toUpperCase();
+    const contractAuth = (c.contractAuthorityStatus || '').toUpperCase();
+    if (brokerAuth === 'A' && commonAuth !== 'A' && contractAuth !== 'A') return false;
+    seen.add(dot); allResults.push(c);
+    return true;
+  }
+
+  function liveUpdate() {
+    updateStats(allResults);
+    if (!allResults.length) return;
+    if (firstRender) {
+      firstRender = false;
+      renderPage(0, pgSz);
+    } else {
+      // Update the count line without re-rendering the full table
+      const countEl = document.querySelector('.results-count');
+      if (countEl) {
+        const total = allResults.length;
+        const e2 = Math.min(pgSz, total);
+        countEl.innerHTML = `Showing <strong>1–${e2}</strong> of <strong>${total}</strong> carriers in <strong>${state}</strong> <span style="color:var(--text3);font-size:11px;font-family:'DM Mono',monospace;">· loading more…</span>`;
+      }
+    }
+  }
+
   const BATCH = 5;
   for (let b = 0; b < kws.length; b += BATCH) {
+    if (!searching) break;
     const batch = kws.slice(b, b + BATCH);
     await Promise.all(batch.map(async (kw) => {
       for (const start of [0, 50]) {
         try {
           const data  = await fetchKw(kw, start);
           const items = data?.content || [];
-          for (const c of items) {
-            const dot = String(c.dotNumber || c.dot || '');
-            if (!dot || seen.has(dot)) continue;
-            if ((c.phyState || '').toUpperCase() !== state.toUpperCase()) continue;
-            if (city) {
-              const cc = (c.phyCity || '').toLowerCase();
-              if (!cc.includes(city)) continue;
-            }
-            // Must be allowed to operate
-            if (c.allowedToOperate !== 'Y') continue;
-            // Must not be a broker-only entity
-            const censusDesc = (c.censusTypeId && c.censusTypeId.censusTypeDesc) || '';
-            if (censusDesc.toUpperCase() === 'BROKER') continue;
-            const brokerAuth = (c.brokerAuthorityStatus || '').toUpperCase();
-            const commonAuth = (c.commonAuthorityStatus || '').toUpperCase();
-            const contractAuth = (c.contractAuthorityStatus || '').toUpperCase();
-            // Skip if ONLY broker authority with no carrier authority
-            if (brokerAuth === 'A' && commonAuth !== 'A' && contractAuth !== 'A') continue;
-            seen.add(dot); allResults.push(c);
-          }
+          let added = false;
+          for (const c of items) { if (tryCarrier(c)) added = true; }
+          if (added) liveUpdate();
           if (items.length < 50) break;
         } catch(e) { break; }
       }
     }));
     done += batch.length;
-    const pct = Math.round((done / kws.length) * 100);
-    pb.style.width = pct + '%';
-    pl.textContent = `Batch ${Math.ceil(b/BATCH)+1}/${Math.ceil(kws.length/BATCH)} — ${allResults.length} carriers found in ${state}`;
+    pb.style.width = Math.round((done / kws.length) * 100) + '%';
+    const ls = document.getElementById('ls');
+    if (ls) ls.textContent = `Found ${allResults.length} carriers so far…`;
+    pl.textContent = `${allResults.length} carriers in ${state} · batch ${Math.ceil(done/BATCH)}/${Math.ceil(kws.length/BATCH)}`;
     if (!nameKw && allResults.length >= 600) break;
   }
 
@@ -486,10 +503,11 @@ async function runSearch() {
   updateStats(allResults);
   renderPage(0, pgSz);
   document.getElementById('s-status').textContent =
-    allResults.length ? `${allResults.length} carriers found in ${state}` : '';
+    allResults.length ? `✓ ${allResults.length} carriers found in ${state}` : 'No carriers found — try All statuses';
   document.getElementById('search-btn').disabled = false;
   searching = false;
 }
+
 
 function renderPage(page, pgSz) {
   const slice = allResults.slice(page * pgSz, (page + 1) * pgSz);
