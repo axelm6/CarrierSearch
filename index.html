@@ -460,7 +460,7 @@ async function runSearch() {
             const cc = (c.phyCity || '').toLowerCase();
             if (!cc.includes(city)) continue;
           }
-          if (auth === 'A' && c.commonAuthorityStatus !== 'A' && c.allowedToOperate !== 'Y') continue;
+          if (auth === 'A' && c.allowedToOperate !== 'Y' && c.statusCode !== 'A') continue;
           // Exclude brokers — only want actual motor carriers
           const censusType = (c.censusTypeId && c.censusTypeId.censusTypeDesc) ? c.censusTypeId.censusTypeDesc : (c.censusType || '');
           if (censusType.toUpperCase() === 'BROKER') continue;
@@ -524,7 +524,7 @@ function renderTable(carriers, page, pgSz) {
     const pSt   = c.phyState  || '';
     const phone = fmt(c.telephone || c.phone || '');
     const mc    = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
-    const { cls, lbl } = bdg(c.commonAuthorityStatus, c.allowedToOperate);
+    const { cls, lbl } = bdg(c.commonAuthorityStatus, c.allowedToOperate, c.statusCode);
     const isSaved = saved.has(dot);
     const safer = `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${dot}`;
     return `<tr>
@@ -568,7 +568,7 @@ function renderTable(carriers, page, pgSz) {
 }
 
 function updateStats(c) {
-  const active = c.filter(x => x.commonAuthorityStatus==='A'||x.allowedToOperate==='Y').length;
+  const active = c.filter(x => x.allowedToOperate==='Y'||x.commonAuthorityStatus==='A'||x.statusCode==='A').length;
   const cities = new Set(c.map(x=>x.phyCity).filter(Boolean)).size;
   document.getElementById('sf').textContent = c.length||'—';
   document.getElementById('sa').textContent = active||'—';
@@ -576,11 +576,11 @@ function updateStats(c) {
   document.getElementById('so').textContent = outreachList.length;
 }
 
-function bdg(code, allowed) {
-  if (code==='A'||allowed==='Y') return {cls:'active',  lbl:'Active'};
-  if (code==='I')                return {cls:'inactive',lbl:'Inactive'};
-  if (code==='P')                return {cls:'pending', lbl:'Pending'};
-  return {cls:'pending',lbl:code||'Unknown'};
+function bdg(code, allowed, statusCode) {
+  if (allowed==='Y' || code==='A' || statusCode==='A') return {cls:'active',  lbl:'Active'};
+  if (code==='I' || statusCode==='I')                  return {cls:'inactive',lbl:'Inactive'};
+  if (code==='P')                                       return {cls:'pending', lbl:'Pending'};
+  return {cls:'pending',lbl:'Unknown'};
 }
 function fmt(p) {
   const d=(p||'').replace(/\D/g,'');
