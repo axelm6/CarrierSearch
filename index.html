@@ -179,6 +179,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         Carrier Search
       </button>
+      <button class="nav-item" id="nav-map" onclick="showPanel('map',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+        State Map
+      </button>
       <button class="nav-item" id="nav-out" onclick="showPanel('outreach',this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Outreach List
@@ -289,6 +293,33 @@
         <div id="pag-row" class="pag" style="display:none;"></div>
       </div>
 
+      <!-- Map Panel -->
+      <div id="panel-map" style="display:none;">
+        <div class="grad-bar"></div>
+        <div class="search-panel" style="padding:20px 24px;">
+          <div class="panel-label">Click any state to search carriers · hover to see details</div>
+          <div id="map-container" style="position:relative; width:100%; user-select:none;">
+            <svg id="us-map" viewBox="0 0 960 600" style="width:100%;height:auto;cursor:pointer;" xmlns="http://www.w3.org/2000/svg"></svg>
+            <div id="map-tooltip" style="position:fixed;background:#1a1c1e;color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;font-family:'DM Mono',monospace;pointer-events:none;display:none;z-index:100;box-shadow:0 4px 16px rgba(0,0,0,0.3);"></div>
+          </div>
+          <div style="display:flex;gap:16px;margin-top:14px;align-items:center;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
+              <div style="width:14px;height:14px;border-radius:3px;background:#EBF5FB;border:1px solid #ccc;"></div> Not searched
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
+              <div style="width:14px;height:14px;border-radius:3px;background:#AED6F1;border:1px solid #5dade2;"></div> 1–100 carriers
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
+              <div style="width:14px;height:14px;border-radius:3px;background:#2E86C1;border:1px solid #1a5276;"></div> 100–300 carriers
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
+              <div style="width:14px;height:14px;border-radius:3px;background:#1B4F72;border:1px solid #154360;"></div> 300+ carriers
+            </div>
+            <div style="margin-left:auto;font-size:12px;color:var(--text3);" id="map-status">Click a state to load its carriers</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Outreach Panel -->
       <div id="panel-outreach" style="display:none;">
         <div class="grad-bar"></div>
@@ -356,9 +387,12 @@ function showPanel(name, btn) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   if (btn) btn.classList.add('active');
   document.getElementById('panel-search').style.display   = name === 'search'   ? '' : 'none';
+  document.getElementById('panel-map').style.display      = name === 'map'      ? '' : 'none';
   document.getElementById('panel-outreach').style.display = name === 'outreach' ? '' : 'none';
-  document.getElementById('ph').textContent = name === 'search' ? 'Carrier Search' : 'Outreach List';
+  const titles = { search: 'Carrier Search', map: 'State Map', outreach: 'Outreach List' };
+  document.getElementById('ph').textContent = titles[name] || 'Carrier Search';
   if (name === 'outreach') renderOutreach();
+  if (name === 'map') initMap();
 }
 
 function quickRegion(state, city) {
@@ -369,11 +403,10 @@ function quickRegion(state, city) {
 }
 
 async function fetchKw(kw, start) {
-  const r = await fetch(`${API}/api/carriers/name/${encodeURIComponent(kw)}?size=50&start=${start}`);
+  const r = await fetch(`/api/carriers?name=${encodeURIComponent(kw)}&size=50&start=${start}`);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const data = await r.json();
-  // FMCSA returns { content: [ { carrier: {...} }, ... ] }
-  // Normalize to a flat array of carrier objects
+  if (data.error) throw new Error(data.error);
   let items = [];
   if (Array.isArray(data)) items = data;
   else if (Array.isArray(data.content)) items = data.content;
@@ -428,6 +461,15 @@ async function runSearch() {
             if (!cc.includes(city)) continue;
           }
           if (auth === 'A' && c.commonAuthorityStatus !== 'A' && c.allowedToOperate !== 'Y') continue;
+          // Exclude brokers — only want actual motor carriers
+          const censusType = (c.censusTypeId && c.censusTypeId.censusTypeDesc) ? c.censusTypeId.censusTypeDesc : (c.censusType || '');
+          if (censusType.toUpperCase() === 'BROKER') continue;
+          // Exclude entities with broker authority but no carrier operation
+          const brokerAuth = (c.brokerAuthorityStatus || '').toUpperCase();
+          const commonAuth = (c.commonAuthorityStatus || '').toUpperCase();
+          const contractAuth = (c.contractAuthorityStatus || '').toUpperCase();
+          // If only broker authority and no carrier authority at all, skip
+          if (brokerAuth === 'A' && commonAuth !== 'A' && contractAuth !== 'A') continue;
           seen.add(dot); allResults.push(c); added++;
         }
         if (items.length < 50) break;
@@ -637,6 +679,166 @@ let tt;
 function showToast(msg){const t=document.getElementById('toast');document.getElementById('tmsg').textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2800);}
 document.getElementById('inp-city').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();});
 document.getElementById('name-kw').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();});
+
+// ── US Map ──────────────────────────────────────────────────────────
+const STATE_COUNTS = {}; // { "TX": 342, ... } populated as users search
+
+// Simplified US state paths (D3-style viewBox 960x600)
+const STATE_PATHS = {
+  "AL": "M 531 353 L 531 400 L 546 400 L 554 411 L 554 353 Z",
+  "AK": "M 100 450 L 160 450 L 180 480 L 160 510 L 100 510 L 80 480 Z",
+  "AZ": "M 203 327 L 203 400 L 281 400 L 281 327 Z",
+  "AR": "M 490 320 L 490 360 L 551 360 L 551 320 Z",
+  "CA": "M 112 219 L 155 219 L 185 280 L 185 360 L 112 360 Z",
+  "CO": "M 270 263 L 391 263 L 391 323 L 270 323 Z",
+  "CT": "M 773 181 L 795 181 L 795 201 L 773 201 Z",
+  "DE": "M 762 205 L 780 205 L 780 230 L 762 230 Z",
+  "FL": "M 551 390 L 620 390 L 650 450 L 600 480 L 551 430 Z",
+  "GA": "M 551 340 L 610 340 L 610 395 L 554 400 L 531 400 L 531 353 Z",
+  "HI": "M 230 510 L 310 510 L 310 540 L 230 540 Z",
+  "ID": "M 198 150 L 250 150 L 265 210 L 220 240 L 198 210 Z",
+  "IL": "M 491 228 L 530 228 L 530 320 L 491 320 Z",
+  "IN": "M 530 228 L 566 228 L 566 310 L 530 310 Z",
+  "IA": "M 432 213 L 492 213 L 492 257 L 432 257 Z",
+  "KS": "M 349 283 L 451 283 L 451 323 L 349 323 Z",
+  "KY": "M 533 293 L 626 293 L 626 320 L 533 320 Z",
+  "LA": "M 460 385 L 530 385 L 550 410 L 510 430 L 460 415 Z",
+  "ME": "M 810 120 L 845 120 L 845 165 L 810 165 Z",
+  "MD": "M 720 220 L 775 220 L 775 245 L 720 245 Z",
+  "MA": "M 778 168 L 830 168 L 830 188 L 778 188 Z",
+  "MI": "M 535 175 L 590 175 L 590 225 L 535 225 Z",
+  "MN": "M 430 148 L 490 148 L 490 213 L 430 213 Z",
+  "MS": "M 500 340 L 531 340 L 531 410 L 500 410 Z",
+  "MO": "M 451 283 L 531 283 L 531 340 L 490 360 L 451 340 Z",
+  "MT": "M 198 123 L 345 123 L 345 185 L 198 185 Z",
+  "NE": "M 349 243 L 451 243 L 451 283 L 349 283 Z",
+  "NV": "M 155 219 L 210 219 L 210 327 L 155 360 Z",
+  "NH": "M 795 148 L 815 148 L 815 190 L 795 190 Z",
+  "NJ": "M 752 198 L 778 198 L 778 228 L 752 228 Z",
+  "NM": "M 270 323 L 355 323 L 355 400 L 270 400 Z",
+  "NY": "M 700 165 L 773 165 L 773 210 L 700 210 Z",
+  "NC": "M 622 295 L 735 295 L 735 328 L 622 328 Z",
+  "ND": "M 347 123 L 432 123 L 432 163 L 347 163 Z",
+  "OH": "M 566 228 L 618 228 L 618 293 L 566 293 Z",
+  "OK": "M 349 323 L 491 323 L 491 360 L 349 360 Z",
+  "OR": "M 112 160 L 210 160 L 210 219 L 112 219 Z",
+  "PA": "M 660 195 L 752 195 L 752 238 L 660 238 Z",
+  "RI": "M 800 188 L 818 188 L 818 205 L 800 205 Z",
+  "SC": "M 610 328 L 670 328 L 670 368 L 610 368 Z",
+  "SD": "M 347 163 L 432 163 L 432 213 L 347 213 Z",
+  "TN": "M 505 320 L 625 320 L 625 350 L 505 350 Z",
+  "TX": "M 349 360 L 490 360 L 490 460 L 390 480 L 349 440 Z",
+  "UT": "M 210 245 L 280 245 L 280 327 L 210 327 Z",
+  "VT": "M 775 148 L 795 148 L 795 181 L 775 181 Z",
+  "VA": "M 636 255 L 752 255 L 752 295 L 636 295 Z",
+  "WA": "M 112 120 L 210 120 L 210 160 L 112 160 Z",
+  "WV": "M 618 253 L 665 253 L 665 295 L 618 295 Z",
+  "WI": "M 478 168 L 535 168 L 535 228 L 478 228 Z",
+  "WY": "M 270 185 L 372 185 L 372 248 L 270 248 Z"
+};
+
+const STATE_LABELS = {
+  "AL":[538,378],"AK":[130,478],"AZ":[238,365],"AR":[518,340],"CA":[145,295],
+  "CO":[328,293],"CT":[782,191],"DE":[769,218],"FL":[590,430],"GA":[572,368],
+  "HI":[268,525],"ID":[222,192],"IL":[508,272],"IN":[548,268],"IA":[459,235],
+  "KS":[398,303],"KY":[578,307],"LA":[500,405],"ME":[826,142],"MD":[745,232],
+  "MA":[802,178],"MI":[560,198],"MN":[458,180],"MS":[514,375],"MO":[489,312],
+  "MT":[268,154],"NE":[398,263],"NV":[180,278],"NH":[804,168],"NJ":[763,213],
+  "NM":[310,362],"NY":[734,188],"NC":[676,312],"ND":[388,143],"OH":[590,260],
+  "OK":[418,342],"OR":[158,190],"PA":[704,218],"RI":[808,196],"SC":[638,348],
+  "SD":[388,188],"TN":[563,335],"TX":[418,415],"UT":[243,286],"VT":[784,164],
+  "VA":[692,275],"WA":[158,140],"WV":[640,274],"WI":[505,198],"WY":[318,216]
+};
+
+let mapInitialized = false;
+
+function getStateColor(code) {
+  const count = STATE_COUNTS[code];
+  if (!count) return '#EBF5FB';
+  if (count < 100) return '#AED6F1';
+  if (count < 300) return '#2E86C1';
+  return '#1B4F72';
+}
+
+function getStateTextColor(code) {
+  const count = STATE_COUNTS[code];
+  if (!count || count < 100) return '#2c3e50';
+  return '#ffffff';
+}
+
+function initMap() {
+  if (mapInitialized) { refreshMapColors(); return; }
+  mapInitialized = true;
+  const svg = document.getElementById('us-map');
+  const tooltip = document.getElementById('map-tooltip');
+
+  // Build SVG
+  let svgContent = '';
+  for (const [code, path] of Object.entries(STATE_PATHS)) {
+    const [lx, ly] = STATE_LABELS[code] || [0,0];
+    const stateName = STATES.find(s => s[0] === code)?.[1] || code;
+    svgContent += `
+      <g id="state-${code}" class="state-group" data-code="${code}" data-name="${stateName}" style="cursor:pointer;">
+        <path d="${path}" fill="${getStateColor(code)}" stroke="#fff" stroke-width="1.5" style="transition:fill 0.2s;"/>
+        <text x="${lx}" y="${ly}" text-anchor="middle" font-size="9" font-family="DM Mono,monospace" fill="${getStateTextColor(code)}" pointer-events="none" font-weight="500">${code}</text>
+      </g>`;
+  }
+  svg.innerHTML = svgContent;
+
+  // Events
+  svg.addEventListener('mousemove', (e) => {
+    const g = e.target.closest('.state-group');
+    if (!g) { tooltip.style.display = 'none'; return; }
+    const code = g.dataset.code;
+    const name = g.dataset.name;
+    const count = STATE_COUNTS[code];
+    tooltip.style.display = 'block';
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top  = (e.clientY - 10) + 'px';
+    tooltip.innerHTML = `<strong>${name} (${code})</strong><br/>${count !== undefined ? count + ' carriers found' : 'Click to search'}`;
+  });
+
+  svg.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+
+  svg.addEventListener('click', (e) => {
+    const g = e.target.closest('.state-group');
+    if (!g) return;
+    tooltip.style.display = 'none';
+    const code = g.dataset.code;
+    // Switch to search panel and trigger search
+    document.getElementById('sel-state').value = code;
+    document.getElementById('inp-city').value = '';
+    showPanel('search', document.getElementById('nav-search'));
+    runSearch();
+  });
+}
+
+function refreshMapColors() {
+  if (!mapInitialized) return;
+  for (const code of Object.keys(STATE_PATHS)) {
+    const g = document.getElementById(`state-${code}`);
+    if (!g) continue;
+    const path = g.querySelector('path');
+    const text = g.querySelector('text');
+    if (path) path.setAttribute('fill', getStateColor(code));
+    if (text) text.setAttribute('fill', getStateTextColor(code));
+  }
+}
+
+// After every search, update map count for that state
+const _origUpdateStats = updateStats;
+function updateStats(c) {
+  _origUpdateStats(c);
+  const state = document.getElementById('sel-state').value;
+  if (state && c.length > 0) {
+    STATE_COUNTS[state] = c.length;
+    refreshMapColors();
+    document.getElementById('map-status').textContent =
+      Object.keys(STATE_COUNTS).length + ' state(s) searched';
+  }
+}
+// ── End Map ──────────────────────────────────────────────────────────
+
 </script>
 </body>
 </html>
