@@ -439,21 +439,16 @@ async function runSearch() {
     if (!dot || seen.has(dot)) return false;
     if ((c.phyState || '').toUpperCase() !== state.toUpperCase()) return false;
     if (city && !(c.phyCity || '').toLowerCase().includes(city)) return false;
-    // Must be active — at least one of these must be true
-    const allowed = c.allowedToOperate === 'Y';
-    const statusOk = c.statusCode === 'A' || c.statusCode === null || c.statusCode === undefined;
-    const commonActive = (c.commonAuthorityStatus || '').toUpperCase() === 'A';
-    const contractActive = (c.contractAuthorityStatus || '').toUpperCase() === 'A';
-    // Require allowedToOperate AND not explicitly inactive AND has some active authority
-    if (!allowed) return false;
+    // Active filter: must be allowed to operate and not explicitly inactive
+    if (c.allowedToOperate !== 'Y') return false;
     if (c.statusCode === 'I') return false;
-    // Must have active carrier authority (not just broker)
-    const bAuth = (c.brokerAuthorityStatus || '').toUpperCase();
-    if (!commonActive && !contractActive && bAuth !== 'A') return false;
     // No pure brokers
     const censusDesc = (c.censusTypeId && c.censusTypeId.censusTypeDesc) || '';
     if (censusDesc.toUpperCase() === 'BROKER') return false;
-    if (bAuth === 'A' && !commonActive && !contractActive) return false;
+    const bAuth = (c.brokerAuthorityStatus || '').toUpperCase();
+    const cAuth = (c.commonAuthorityStatus || '').toUpperCase();
+    const ctAuth = (c.contractAuthorityStatus || '').toUpperCase();
+    if (bAuth === 'A' && cAuth !== 'A' && ctAuth !== 'A') return false;
     seen.add(dot);
     return true;
   }
