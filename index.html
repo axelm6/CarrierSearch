@@ -358,7 +358,9 @@ const API = '';  // same origin
 
 const KEYWORDS = [
   'transport','trucking','freight','logistics','express',
-  'carrier','hauling','moving','shipping','lines'
+  'carrier','hauling','moving','shipping','lines',
+  'llc','inc','corp','services','group',
+  'delivery','distribution','transit','solutions','national'
 ];
 
 const STATES = [
@@ -459,7 +461,7 @@ async function runSearch() {
 
   // Fire all keyword searches in parallel, collect results
   await Promise.all(kws.map(kw =>
-    fetch(`/api/carriers?name=${encodeURIComponent(kw)}&size=50&start=0`)
+    fetch(`/api/carriers?name=${encodeURIComponent(kw)}&size=100&start=0`)
       .then(r => r.json())
       .then(data => {
         (data.content || []).forEach(c => { if (isCarrier(c)) allResults.push(c); });
@@ -731,6 +733,7 @@ async function searchAllUS() {
   const searchBtn = document.getElementById('search-btn');
   btn.disabled = true; searchBtn.disabled = true;
   document.getElementById('pag-row').style.display = 'none';
+  document.getElementById('sel-state').value = '';
   document.getElementById('results-area').innerHTML = `
     <div class="state-box">
       <div class="spinner"></div>
@@ -742,7 +745,7 @@ async function searchAllUS() {
   pw.style.display = 'block'; pb.style.width = '5%';
   let completed = 0;
   await Promise.all(KEYWORDS.map(kw =>
-    fetch('/api/carriers?name=' + encodeURIComponent(kw) + '&size=50&start=0')
+    fetch('/api/carriers?name=' + encodeURIComponent(kw) + '&size=100&start=0')
       .then(r => r.json())
       .then(data => {
         (data.content || []).forEach(c => {
@@ -767,35 +770,10 @@ async function searchAllUS() {
   ));
   allResults.sort((a,b) => (a.phyState||'').localeCompare(b.phyState||'') || (a.legalName||'').localeCompare(b.legalName||''));
   updateStats(allResults);
-  const area = document.getElementById('results-area');
-  if (!allResults.length) {
-    area.innerHTML = '<div class="state-box"><div class="st">No carriers found</div></div>';
-  } else {
-    const slice = allResults.slice(0, pgSz);
-    const saved = new Set(outreachList.map(c => c.dot));
-    const rows = slice.map(c => {
-      const dot = String(c.dotNumber||c.dot||'');
-      const name = c.legalName||c.dbaName||'—';
-      const pCity = c.phyCity||''; const pSt = c.phyState||'';
-      const phone = fmt(c.telephone||c.phone||'');
-      const mc = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
-      const {cls,lbl} = bdg(c.commonAuthorityStatus, c.allowedToOperate, c.statusCode);
-      const isSaved = saved.has(dot);
-      const safer = 'https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=' + dot;
-      return '<tr><td style="width:90px;"><a class="dot-link" href="' + safer + '" target="_blank">' + dot + '</a></td><td style="width:auto;font-weight:700;">' + h(name) + '</td><td style="width:150px;" class="td-sm">' + h(pCity) + (pCity?', ':'') + pSt + '</td><td style="width:130px;" class="td-mono td-sm">' + (phone||'—') + '</td><td style="width:90px;" class="td-mono td-sm">' + (mc?'MC-'+mc:'—') + '</td><td style="width:90px;"><span class="badge badge-' + cls + '">' + lbl + '</span></td><td style="width:76px;text-align:right;"><button class="add-btn ' + (isSaved?'added':'') + '" id="btn-' + dot + '" onclick='addToOutreach(' + JSON.stringify({dot,name,city:pCity,state:pSt,phone}) + ')'>' + (isSaved?'✓ Saved':'+ Add') + '</button></td></tr>';
-    }).join('');
-    area.innerHTML = '<div class="results-hdr"><div class="results-count">Showing <strong>' + slice.length + '</strong> of <strong>' + allResults.length + '</strong> carriers across <strong>All US States</strong></div><button class="btn btn-ghost" style="font-size:12px;padding:5px 12px;" onclick="exportResults()">Export ' + allResults.length + '</button></div><div class="table-wrap"><table><thead><tr><th>DOT #</th><th>Legal name</th><th>Location</th><th>Phone</th><th>MC #</th><th>Authority</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
-    if (allResults.length > pgSz) {
-      const pRow = document.getElementById('pag-row');
-      pRow.style.display = 'flex';
-      const totalPages = Math.ceil(allResults.length/pgSz);
-      let btns = '';
-      for (let i = 0; i < Math.min(totalPages,10); i++)
-        btns += '<button class="pb ' + (i===0?'cur':'') + '" onclick="renderPage(' + i + ',' + pgSz + ')" ' + (i===0?'disabled':'') + '>' + (i+1) + '</button>';
-      pRow.innerHTML = btns;
-    }
-  }
-  document.getElementById('s-status').textContent = '✓ ' + allResults.length + ' carriers across all US states';
+  renderPage(0, pgSz);
+  document.getElementById('s-status').textContent = allResults.length
+    ? '✓ ' + allResults.length + ' carriers across all US states'
+    : 'No results found';
   pw.style.display = 'none'; pb.style.width = '0%';
   btn.disabled = false; searchBtn.disabled = false;
   searching = false;
