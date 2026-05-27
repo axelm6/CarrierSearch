@@ -251,7 +251,7 @@
               <label>Authority status</label>
               <div class="sel-wrap">
                 <select id="auth-filter">
-                  <option value="A">Active only</option>
+                  <option value="A">Allowed to operate (Y)</option>
                   <option value="">All statuses</option>
                 </select>
               </div>
@@ -460,7 +460,7 @@ async function runSearch() {
             const cc = (c.phyCity || '').toLowerCase();
             if (!cc.includes(city)) continue;
           }
-          if (auth === 'A' && c.allowedToOperate !== 'Y' && c.statusCode !== 'A') continue;
+          if (auth === 'A' && c.allowedToOperate !== 'Y') continue;
           // Exclude brokers — only want actual motor carriers
           const censusType = (c.censusTypeId && c.censusTypeId.censusTypeDesc) ? c.censusTypeId.censusTypeDesc : (c.censusType || '');
           if (censusType.toUpperCase() === 'BROKER') continue;
