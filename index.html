@@ -463,11 +463,62 @@ async function runSearch() {
   // All done — render
   pb.style.width = '100%';
   updateStats(allResults);
-  renderPage(0, pgSz);
+  
+  const area = document.getElementById('results-area');
+  
+  if (allResults.length === 0) {
+    area.innerHTML = `<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div><div class="st">No carriers found in ${state}</div><div class="ss">Try switching to "All statuses" or a different state.</div></div>`;
+  } else {
+    const pgSzVal = parseInt(document.getElementById('page-size').value);
+    const saved = new Set(outreachList.map(c => c.dot));
+    const slice = allResults.slice(0, pgSzVal);
+    const rows = slice.map(c => {
+      const dot = String(c.dotNumber || c.dot || '');
+      const name = c.legalName || c.dbaName || '—';
+      const pCity = c.phyCity || '';
+      const pSt = c.phyState || '';
+      const phone = fmt(c.telephone || c.phone || '');
+      const mc = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
+      const { cls, lbl } = bdg(c.commonAuthorityStatus, c.allowedToOperate, c.statusCode);
+      const isSaved = saved.has(dot);
+      const safer = `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${dot}`;
+      return `<tr>
+        <td style="width:90px;"><a class="dot-link" href="${safer}" target="_blank">${dot}</a></td>
+        <td style="width:auto;font-weight:700;">${h(name)}</td>
+        <td style="width:150px;" class="td-sm">${h(pCity)}${pCity?', ':''}${pSt}</td>
+        <td style="width:130px;" class="td-mono td-sm">${phone||'—'}</td>
+        <td style="width:90px;" class="td-mono td-sm">${mc ? 'MC-'+mc : '—'}</td>
+        <td style="width:90px;"><span class="badge badge-${cls}">${lbl}</span></td>
+        <td style="width:76px;text-align:right;"><button class="add-btn ${isSaved?'added':''}" id="btn-${dot}" onclick='addToOutreach(${JSON.stringify({dot,name,city:pCity,state:pSt,phone})})'>${isSaved?'✓ Saved':'+ Add'}</button></td>
+      </tr>`;
+    }).join('');
+    area.innerHTML = `
+      <div class="results-hdr">
+        <div class="results-count">Showing <strong>${slice.length}</strong> of <strong>${allResults.length}</strong> carriers in <strong>${state}</strong></div>
+        <button class="btn btn-ghost" style="font-size:12px;padding:5px 12px;" onclick="exportResults()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export ${allResults.length}
+        </button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>DOT #</th><th>Legal name</th><th>Location</th><th>Phone</th><th>MC #</th><th>Authority</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+    
+    // Pagination if needed
+    if (allResults.length > pgSzVal) {
+      const pRow = document.getElementById('pag-row');
+      pRow.style.display = 'flex';
+      let btns = '';
+      const totalPages = Math.ceil(allResults.length / pgSzVal);
+      for (let i = 0; i < totalPages; i++) {
+        btns += `<button class="pb ${i===0?'cur':''}" onclick="renderPage(${i},${pgSzVal})" ${i===0?'disabled':''}>${i+1}</button>`;
+      }
+      pRow.innerHTML = btns;
+    }
+  }
+  
   document.getElementById('s-status').textContent =
-    allResults.length
-      ? `✓ ${allResults.length} carriers found in ${state}`
-      : 'No carriers found — try a different state';
+    allResults.length ? `✓ ${allResults.length} carriers in ${state}` : '';
   pw.style.display = 'none';
   document.getElementById('search-btn').disabled = false;
   searching = false;
