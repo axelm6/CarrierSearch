@@ -402,111 +402,119 @@ function quickRegion(state, city) {
   runSearch();
 }
 
-async function fetchKw(kw, start) {
-  const r = await fetch(`/api/carriers?name=${encodeURIComponent(kw)}&size=50&start=${start}`);
+async function fetchByState(state, start, size) {
+  const r = await fetch(`/api/carriers?state=${encodeURIComponent(state)}&size=${size}&start=${start}`);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const data = await r.json();
   if (data.error) throw new Error(data.error);
-  let items = [];
-  if (Array.isArray(data)) items = data;
-  else if (Array.isArray(data.content)) items = data.content;
-  const flat = items.map(x => (x && x.carrier) ? x.carrier : x);
-  return { content: flat };
+  const items = Array.isArray(data.content) ? data.content : [];
+  return { content: items.map(x => (x && x.carrier) ? x.carrier : x), total: data.total || items.length };
 }
 
-async function runSearch() {
+async function runSearch(pageStart) {
   const state = stateSel.value;
   if (!state) { showToast('Please select a state first'); return; }
   if (searching) return;
   searching = true;
 
+  pageStart = pageStart || 0;
   const city   = document.getElementById('inp-city').value.trim().toLowerCase();
   const nameKw = document.getElementById('name-kw').value.trim().toLowerCase();
   const pgSz   = parseInt(document.getElementById('page-size').value);
 
-  allResults = [];
-  const seen = new Set();
+  if (pageStart === 0) allResults = [];
+
   document.getElementById('search-btn').disabled = true;
   document.getElementById('pag-row').style.display = 'none';
-  document.getElementById('results-area').innerHTML = `
-    <div class="state-box" id="loading-box">
-      <div class="spinner"></div>
-      <div class="st">Searching carriers in ${state}…</div>
-      <div class="ss" id="ls" style="font-family:'DM Mono',monospace;font-size:11px;">Starting…</div>
-    </div>`;
+
+  if (pageStart === 0) {
+    document.getElementById('results-area').innerHTML = `
+      <div class="state-box">
+        <div class="spinner"></div>
+        <div class="st">Loading carriers in ${state}…</div>
+        <div class="ss" id="ls" style="font-family:'DM Mono',monospace;font-size:11px;">Querying FMCSA…</div>
+      </div>`;
+  }
 
   const pw = document.getElementById('pw');
   const pb = document.getElementById('pb');
   const pl = document.getElementById('pl');
-  pw.style.display = 'block'; pl.style.display = 'block';
-  pb.style.width = '0%';
+  pw.style.display = 'block'; pb.style.width = '20%';
 
-  const kws = nameKw ? [nameKw] : KEYWORDS;
-  let done = 0;
-  let firstRender = true;
-
-  function tryCarrier(c) {
-    const dot = String(c.dotNumber || c.dot || '');
-    if (!dot || seen.has(dot)) return false;
-    if ((c.phyState || '').toUpperCase() !== state.toUpperCase()) return false;
-    if (city && !(c.phyCity || '').toLowerCase().includes(city)) return false;
-    // Exclude brokers only — show all carrier statuses
-    const censusDesc = (c.censusTypeId && c.censusTypeId.censusTypeDesc) || '';
-    if (censusDesc.toUpperCase() === 'BROKER') return false;
-    const brokerAuth = (c.brokerAuthorityStatus || '').toUpperCase();
-    const commonAuth = (c.commonAuthorityStatus || '').toUpperCase();
-    const contractAuth = (c.contractAuthorityStatus || '').toUpperCase();
-    if (brokerAuth === 'A' && commonAuth !== 'A' && contractAuth !== 'A') return false;
-    seen.add(dot); allResults.push(c);
-    return true;
-  }
-
-  function liveUpdate() {
-    updateStats(allResults);
-    if (!allResults.length) return;
-    // Always re-render the table so results appear live
-    renderPage(0, pgSz);
-    // Add "loading more" indicator to the count
-    const countEl = document.querySelector('.results-count');
-    if (countEl && searching) {
-      const total = allResults.length;
-      const e2 = Math.min(pgSz, total);
-      countEl.innerHTML = `Showing <strong>1–${e2}</strong> of <strong>${total}</strong> carriers in <strong>${state}</strong> <span style="color:var(--blue);font-size:11px;font-family:'DM Mono',monospace;">· fetching more…</span>`;
+  try {
+    let results;
+    if (nameKw) {
+      // Keyword search — fetch by name and filter client-side by state
+      const r = await fetch(`/api/carriers?name=${encodeURIComponent(nameKw)}&size=100&start=${pageStart}`);
+      const data = await r.json();
+      const items = (data.content || []).map(x => x.carrier || x);
+      results = items.filter(c => (c.phyState||'').toUpperCase() === state.toUpperCase());
+    } else {
+      // State search — direct, fast, accurate
+      const data = await fetchByState(state, pageStart, 100);
+      results = data.content;
     }
+
+    pb.style.width = '70%';
+
+    // Filter: exclude brokers, apply city filter
+    const filtered = results.filter(c => {
+      if (city && !(c.phyCity||'').toLowerCase().includes(city)) return false;
+      const censusDesc = (c.censusTypeId && c.censusTypeId.censusTypeDesc) || '';
+      if (censusDesc.toUpperCase() === 'BROKER') return false;
+      const bAuth = (c.brokerAuthorityStatus||'').toUpperCase();
+      const cAuth = (c.commonAuthorityStatus||'').toUpperCase();
+      const ctAuth = (c.contractAuthorityStatus||'').toUpperCase();
+      if (bAuth === 'A' && cAuth !== 'A' && ctAuth !== 'A') return false;
+      return true;
+    });
+
+    // Deduplicate
+    const seen = new Set(allResults.map(c => String(c.dotNumber||'')));
+    const newCarriers = filtered.filter(c => {
+      const dot = String(c.dotNumber||'');
+      if (!dot || seen.has(dot)) return false;
+      seen.add(dot); return true;
+    });
+    allResults = allResults.concat(newCarriers);
+
+    pb.style.width = '100%';
+    updateStats(allResults);
+    renderPage(0, pgSz);
+
+    const hasMore = results.length === 100;
+    document.getElementById('s-status').textContent =
+      `✓ ${allResults.length} carriers in ${state}${hasMore ? ' · more available' : ''}`;
+
+    // Show Load More button if there are more results
+    if (hasMore) {
+      const pRow = document.getElementById('pag-row');
+      pRow.style.display = 'flex';
+      pRow.innerHTML = `
+        <button class="btn btn-ghost" onclick="loadMore(${pageStart + 100})">
+          Load more carriers (next 100) →
+        </button>
+        <span class="pi" style="padding:6px 8px;">${allResults.length} loaded so far</span>`;
+    }
+
+  } catch(e) {
+    document.getElementById('results-area').innerHTML = `
+      <div class="state-box">
+        <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+        <div class="st">Could not load carriers</div>
+        <div class="ss">${e.message}</div>
+      </div>`;
   }
 
-  const BATCH = 5;
-  for (let b = 0; b < kws.length; b += BATCH) {
-    if (!searching) break;
-    const batch = kws.slice(b, b + BATCH);
-    await Promise.all(batch.map(async (kw) => {
-      for (const start of [0, 50]) {
-        try {
-          const data  = await fetchKw(kw, start);
-          const items = data?.content || [];
-          let added = false;
-          for (const c of items) { if (tryCarrier(c)) added = true; }
-          if (added) liveUpdate();
-          if (items.length < 50) break;
-        } catch(e) { break; }
-      }
-    }));
-    done += batch.length;
-    pb.style.width = Math.round((done / kws.length) * 100) + '%';
-    const ls = document.getElementById('ls');
-    if (ls) ls.textContent = `Found ${allResults.length} carriers so far…`;
-    pl.textContent = `${allResults.length} carriers in ${state} · batch ${Math.ceil(done/BATCH)}/${Math.ceil(kws.length/BATCH)}`;
-    if (!nameKw && allResults.length >= 600) break;
-  }
-
-  pw.style.display = 'none'; pl.style.display = 'none';
-  updateStats(allResults);
-  renderPage(0, pgSz);
-  document.getElementById('s-status').textContent =
-    allResults.length ? `✓ ${allResults.length} carriers found in ${state}` : 'No carriers found — try All statuses';
+  pw.style.display = 'none';
   document.getElementById('search-btn').disabled = false;
   searching = false;
 }
+
+function loadMore(start) {
+  runSearch(start);
+}
+
 
 
 function renderPage(page, pgSz) {
