@@ -461,11 +461,13 @@ async function runSearch() {
     pb.style.width = Math.max(pct, 5) + '%';
     pl.textContent = `${allResults.length} carriers in ${state} · ${completed}/${kws.length * 2} queries done`;
     updateStats(allResults);
-    if (allResults.length > 0) renderPage(0, pgSz);
-    const ls = document.getElementById('ls');
-    if (ls) ls.textContent = allResults.length > 0
-      ? `Found ${allResults.length} carriers so far…`
-      : 'Searching across keywords…';
+    if (allResults.length > 0) {
+      // Replace loading state with live table
+      renderTable(allResults.slice(0, pgSz), 0, pgSz);
+    } else {
+      const ls = document.getElementById('ls');
+      if (ls) ls.textContent = 'Searching across keywords…';
+    }
   }
 
   // Fire ALL keywords fully in parallel — no batching
