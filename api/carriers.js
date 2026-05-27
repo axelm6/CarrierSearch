@@ -8,7 +8,7 @@ function fetchJSON(url) {
       res.on('data', chunk => raw += chunk);
       res.on('end', () => {
         try { resolve(JSON.parse(raw)); }
-        catch(e) { reject(new Error('FMCSA non-JSON: ' + raw.slice(0, 120))); }
+        catch(e) { reject(new Error('non-JSON: ' + raw.slice(0, 80))); }
       });
     }).on('error', reject);
   });
@@ -16,27 +16,19 @@ function fetchJSON(url) {
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  const { state, name } = req.query;
-  const size  = parseInt(req.query.size)  || 100;
+  const { name } = req.query;
+  const size  = parseInt(req.query.size)  || 50;
   const start = parseInt(req.query.start) || 0;
+  if (!name) return res.status(400).json({ error: 'name param required' });
 
-  let url;
-  if (state) {
-    url = `https://mobile.fmcsa.dot.gov/qc/services/carriers?state=${encodeURIComponent(state)}&webKey=${WEBKEY}&size=${size}&start=${start}&output=json`;
-  } else if (name) {
-    url = `https://mobile.fmcsa.dot.gov/qc/services/carriers/name/${encodeURIComponent(name)}?webKey=${WEBKEY}&size=${size}&start=${start}&output=json`;
-  } else {
-    return res.status(400).json({ error: 'state or name param required' });
-  }
-
+  const url = `https://mobile.fmcsa.dot.gov/qc/services/carriers/name/${encodeURIComponent(name)}?webKey=${WEBKEY}&size=${size}&start=${start}&output=json`;
   try {
     const data = await fetchJSON(url);
     let items = [];
     if (Array.isArray(data)) items = data;
     else if (Array.isArray(data.content)) items = data.content;
-    const normalized = items.map(x => (x && x.carrier) ? x.carrier : x);
-    res.json({ content: normalized, total: data.totalCount || normalized.length });
-  } catch (e) {
+    res.json({ content: items.map(x => (x && x.carrier) ? x.carrier : x) });
+  } catch(e) {
     res.status(500).json({ error: e.message });
   }
 };
