@@ -28,10 +28,12 @@ module.exports = async (req, res) => {
 
   try {
     const data = await fetchJSON(url);
+
     let items = [];
     if (Array.isArray(data)) items = data;
     else if (Array.isArray(data.content)) items = data.content;
     const normalized = items.map(x => (x && x.carrier) ? x.carrier : x);
+
     res.json({ content: normalized });
   } catch (e) {
     res.status(500).json({ error: e.message });
