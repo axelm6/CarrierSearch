@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CarrierNet — Ligentia Carrier Prospecting</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --pink:    #E60080; --purple: #786EAF; --blue:  #32AAE1;
+    --lime:    #C8D23C; --orange: #FAB43C; --gray:  #636569;
+    --bg:      #F5F6F8; --surface: #FFFFFF; --surface2: #F0F2F5; --surface3: #E8EAF0;
+    --border:  rgba(99,101,105,0.12); --border2: rgba(99,101,105,0.22);
+    --text:    #1a1c1e; --text2: #4a4d52; --text3: #9095a0;
+    --accent:  #32AAE1; --accent-light: rgba(50,170,225,0.10); --accent-dark: #1e8ab8;
+    --green-bg: rgba(74,154,85,0.10); --green: #4a9a55;
+    --red-bg:   rgba(192,53,53,0.08); --red:   #c03535;
+    --amber-bg: rgba(176,122,16,0.10); --amber: #b07a10;
+    --radius: 8px; --radius-lg: 14px;
+    --shadow:    0 1px 4px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.04);
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+  .shell { display: flex; min-height: 100vh; }
+
+  /* ── Sidebar ── */
+  .sidebar { width: 265px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+  .sidebar-logo { padding: 22px 20px 18px; border-bottom: 1px solid var(--border); }
+  .logo-wordmark { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; background: linear-gradient(90deg,#E60080 0%,#786EAF 30%,#32AAE1 55%,#C8D23C 78%,#FAB43C 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .logo-member { font-size: 10px; color: var(--text3); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; margin-top: 1px; }
+  .logo-app { font-size: 11px; color: var(--text3); margin-top: 8px; font-weight: 600; }
+  .logo-app span { color: var(--blue); font-weight: 800; }
+
+  .sidebar-section { padding: 16px 14px 8px; }
+  .s-label { font-size: 9px; font-family: 'DM Mono', monospace; letter-spacing: 0.14em; color: var(--text3); text-transform: uppercase; margin-bottom: 8px; padding: 0 6px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--radius); cursor: pointer; color: var(--text2); font-size: 13px; font-weight: 600; transition: all 0.15s; border: none; background: none; width: 100%; text-align: left; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--accent-light); color: var(--accent-dark); }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .nav-badge { margin-left: auto; background: var(--pink); color: #fff; font-size: 10px; font-weight: 800; border-radius: 99px; padding: 1px 7px; display: none; }
+  .nav-badge.show { display: block; }
+  .s-divider { height: 1px; background: var(--border); margin: 6px 14px; }
+  .region-list { padding: 0 14px; display: flex; flex-direction: column; gap: 2px; }
+  .region-btn { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: var(--radius); cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text2); border: none; background: none; width: 100%; text-align: left; transition: all 0.15s; }
+  .region-btn:hover { background: var(--surface2); color: var(--text); }
+  .rdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .sidebar-footer { margin-top: auto; padding: 14px; border-top: 1px solid var(--border); overflow: hidden; }
+  .saved-preview { font-size: 12px; color: var(--text2); line-height: 1.8; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .saved-empty { font-size: 12px; color: var(--text3); font-style: italic; }
+
+  /* ── Main ── */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 13px 28px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.04); position: sticky; top: 0; z-index: 10; }
+  .topbar-title { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+  .topbar-meta { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 1px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); border: none; font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s; text-decoration: none; white-space: nowrap; }
+  .btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .btn-primary { background: var(--blue); color: #fff; box-shadow: 0 2px 8px rgba(50,170,225,0.28); }
+  .btn-primary:hover { background: var(--accent-dark); }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+  .btn-ghost { background: var(--surface); color: var(--text2); border: 1px solid var(--border2); }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+  .btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid rgba(192,53,53,0.18); }
+  .btn-danger:hover { background: rgba(192,53,53,0.14); }
+
+  /* ── Stats ── */
+  .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 20px 28px 0; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; box-shadow: var(--shadow); }
+  .stat-label { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+  .stat-value { font-size: 24px; font-weight: 800; letter-spacing: -0.03em; }
+  .c-blue { color: var(--blue); } .c-pink { color: var(--pink); }
+  .c-lime { color: #7a8a10; }    .c-orange { color: #b07a10; }
+
+  /* ── Content ── */
+  .content { flex: 1; padding: 22px 28px 40px; overflow-y: auto; }
+  .grad-bar { height: 3px; border-radius: 99px; margin-bottom: 20px; background: linear-gradient(90deg,#E60080,#786EAF,#32AAE1,#C8D23C,#FAB43C); }
+  .panel-label { font-size: 9px; font-family: 'DM Mono', monospace; letter-spacing: 0.14em; color: var(--text3); text-transform: uppercase; margin-bottom: 14px; }
+
+  /* ── Search card ── */
+  .search-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px 24px; margin-bottom: 20px; box-shadow: var(--shadow); }
+  .loc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .flt-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .act-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .field label { display: block; font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 0.04em; margin-bottom: 5px; }
+  .field select, .field input { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius); padding: 9px 12px; font-size: 13px; font-family: 'Nunito', sans-serif; font-weight: 600; appearance: none; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+  .field select:focus, .field input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(50,170,225,0.12); }
+  .sel-wrap { position: relative; }
+  .sel-wrap::after { content: ''; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); border: 4px solid transparent; border-top-color: var(--text3); pointer-events: none; }
+
+  /* Progress */
+  .progress-wrap { height: 4px; background: var(--surface2); border-radius: 99px; margin-top: 14px; overflow: hidden; display: none; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg,#32AAE1,#786EAF); border-radius: 99px; transition: width 0.4s ease; }
+  .progress-label { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3); margin-top: 6px; display: none; }
+
+  /* ── Results ── */
+  .results-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+  .results-count { font-size: 13px; color: var(--text2); font-weight: 600; }
+  .results-count strong { color: var(--blue); }
+
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: var(--surface2); }
+  th { padding: 10px 14px; text-align: left; font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 11px 14px; border-top: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--text); vertical-align: middle; }
+  tr:hover td { background: #fafbff; }
+  .td-mono { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; }
+  .td-sm { font-size: 12px; color: var(--text2); }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px; font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 500; }
+  .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
+  .badge-active   { background: var(--green-bg); color: var(--green); } .badge-active::before   { background: var(--green); }
+  .badge-inactive { background: var(--red-bg);   color: var(--red);   } .badge-inactive::before { background: var(--red); }
+  .badge-pending  { background: var(--amber-bg); color: var(--amber); } .badge-pending::before  { background: var(--orange); }
+
+  .add-btn { padding: 4px 10px; border-radius: var(--radius); font-size: 11px; font-family: 'DM Mono', monospace; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border2); background: transparent; color: var(--text3); font-weight: 500; }
+  .add-btn:hover:not(.added) { border-color: var(--blue); color: var(--blue); background: var(--accent-light); }
+  .add-btn.added { border-color: var(--green); color: var(--green); background: var(--green-bg); cursor: default; }
+  .dot-link { color: var(--blue); text-decoration: none; font-family: 'DM Mono', monospace; font-size: 12px; }
+  .dot-link:hover { text-decoration: underline; }
+
+  /* Empty / loading */
+  .state-box { text-align: center; padding: 60px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
+  .si { width: 52px; height: 52px; background: var(--surface2); border-radius: 14px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+  .si svg { width: 26px; height: 26px; color: var(--text3); }
+  .st { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+  .ss { font-size: 13px; color: var(--text3); line-height: 1.7; font-weight: 600; }
+  .ss code { background: var(--surface2); padding: 2px 7px; border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2); }
+  .ss a { color: var(--blue); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { width: 30px; height: 30px; border: 2px solid var(--surface3); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 16px; }
+
+  /* Pagination */
+  .pag { display: flex; align-items: center; gap: 8px; margin-top: 16px; justify-content: center; flex-wrap: wrap; }
+  .pb { padding: 6px 14px; border-radius: var(--radius); font-size: 12px; font-family: 'DM Mono', monospace; cursor: pointer; transition: all 0.15s; background: var(--surface); border: 1px solid var(--border2); color: var(--text2); font-weight: 500; }
+  .pb:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+  .pb:disabled { opacity: 0.3; cursor: not-allowed; }
+  .pb.cur { border-color: var(--blue); color: var(--blue); }
+  .pi { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text3); }
+
+  /* Outreach */
+  .ocard { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; box-shadow: var(--shadow); transition: all 0.15s; }
+  .ocard:hover { border-color: var(--border2); box-shadow: var(--shadow-md); }
+  .oname { font-weight: 800; font-size: 14px; margin-bottom: 4px; }
+  .ometa { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3); }
+  .ometa span { margin-right: 12px; }
+  .oactions { display: flex; gap: 8px; align-items: center; margin-left: 16px; flex-shrink: 0; }
+  .onotes { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 10px; font-size: 12px; color: var(--text2); font-family: 'Nunito', sans-serif; font-weight: 600; resize: none; outline: none; width: 180px; height: 36px; transition: all 0.15s; }
+  .onotes:focus { border-color: var(--blue); height: 60px; box-shadow: 0 0 0 3px rgba(50,170,225,0.10); }
+  .rb { width: 30px; height: 30px; border-radius: var(--radius); background: transparent; border: 1px solid var(--border); color: var(--text3); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .rb:hover { border-color: var(--red); color: var(--red); background: var(--red-bg); }
+  .rb svg { width: 14px; height: 14px; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 10px; transform: translateY(80px); opacity: 0; transition: all 0.25s; box-shadow: var(--shadow-md); z-index: 999; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .tdot { width: 8px; height: 8px; border-radius: 50%; background: var(--blue); flex-shrink: 0; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 99px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-wordmark">ligentia</div>
+      <div class="logo-member">Member of ASYAD Group</div>
+      <div class="logo-app">Carrier<span>Net</span> — Prospecting Tool</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="s-label">Navigation</div>
+      <button class="nav-item active" id="nav-search" onclick="showPanel('search',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Carrier Search
+      </button>
+      <button class="nav-item" id="nav-out" onclick="showPanel('outreach',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Outreach List
+        <span class="nav-badge" id="nbadge">0</span>
+      </button>
+    </div>
+    <div class="s-divider"></div>
+    <div class="sidebar-section"><div class="s-label">Quick Regions</div></div>
+    <div class="region-list">
+      <button class="region-btn" onclick="quickRegion('IL','')"><div class="rdot" style="background:#32AAE1"></div>Midwest Hub (IL)</button>
+      <button class="region-btn" onclick="quickRegion('GA','')"><div class="rdot" style="background:#E60080"></div>Southeast (GA)</button>
+      <button class="region-btn" onclick="quickRegion('TX','')"><div class="rdot" style="background:#FAB43C"></div>Southwest (TX)</button>
+      <button class="region-btn" onclick="quickRegion('NY','')"><div class="rdot" style="background:#786EAF"></div>Northeast (NY)</button>
+      <button class="region-btn" onclick="quickRegion('CA','')"><div class="rdot" style="background:#C8D23C"></div>West Coast (CA)</button>
+      <button class="region-btn" onclick="quickRegion('FL','')"><div class="rdot" style="background:#E60080"></div>Florida (FL)</button>
+      <button class="region-btn" onclick="quickRegion('OH','')"><div class="rdot" style="background:#32AAE1"></div>Ohio (OH)</button>
+    </div>
+    <div class="sidebar-footer">
+      <div class="s-label">Saved carriers</div>
+      <div id="sp"><div class="saved-empty">None saved yet</div></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="ph">Carrier Search</div>
+        <div class="topbar-meta">Powered by FMCSA · 600,000+ registered US motor carriers</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="exportResults()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-card"><div class="stat-label">Carriers Found</div><div class="stat-value c-blue" id="sf">—</div></div>
+      <div class="stat-card"><div class="stat-label">Active Authority</div><div class="stat-value c-lime" id="sa">—</div></div>
+      <div class="stat-card"><div class="stat-label">Cities Covered</div><div class="stat-value c-orange" id="sc">—</div></div>
+      <div class="stat-card"><div class="stat-label">Outreach List</div><div class="stat-value c-pink" id="so">0</div></div>
+    </div>
+
+    <div class="content">
+
+      <!-- Search Panel -->
+      <div id="panel-search">
+        <div class="grad-bar"></div>
+        <div class="search-panel">
+          <div class="panel-label">Search by carrier location</div>
+          <div class="loc-row">
+            <div class="field">
+              <label>State (required)</label>
+              <div class="sel-wrap"><select id="sel-state"></select></div>
+            </div>
+            <div class="field">
+              <label>City filter (optional — narrows results)</label>
+              <input type="text" id="inp-city" placeholder="e.g. Houston, Chicago, Atlanta…" />
+            </div>
+          </div>
+          <div class="panel-label" style="margin-top:2px;">Additional filters</div>
+          <div class="flt-row">
+            <div class="field">
+              <label>Authority status</label>
+              <div class="sel-wrap">
+                <select id="auth-filter">
+                  <option value="A">Active only</option>
+                  <option value="">All statuses</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label>Carrier name keyword (optional)</label>
+              <input type="text" id="name-kw" placeholder="e.g. express, eagle, freight…" />
+            </div>
+            <div class="field">
+              <label>Results per page</label>
+              <div class="sel-wrap">
+                <select id="page-size">
+                  <option value="25">25 per page</option>
+                  <option value="50" selected>50 per page</option>
+                  <option value="100">100 per page</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="act-row">
+            <button class="btn btn-primary" id="search-btn" onclick="runSearch()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              Search Carriers
+            </button>
+            <button class="btn btn-ghost" onclick="clearSearch()">Clear</button>
+            <span id="s-status" style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;font-weight:500;"></span>
+          </div>
+          <div class="progress-wrap" id="pw"><div class="progress-bar" id="pb" style="width:0%"></div></div>
+          <div class="progress-label" id="pl"></div>
+        </div>
+
+        <div id="results-area">
+          <div class="state-box">
+            <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+            <div class="st">Select a state to find carriers</div>
+            <div class="ss">Pick any state — the tool will query FMCSA across multiple keywords<br/>and filter all carriers registered in that state.</div>
+          </div>
+        </div>
+        <div id="pag-row" class="pag" style="display:none;"></div>
+      </div>
+
+      <!-- Outreach Panel -->
+      <div id="panel-outreach" style="display:none;">
+        <div class="grad-bar"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+          <div style="font-size:13px;font-weight:700;color:var(--text2);" id="otl">No carriers saved</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost" onclick="exportOutreach()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export CSV
+            </button>
+            <button class="btn btn-danger" onclick="clearOutreach()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>Clear All
+            </button>
+          </div>
+        </div>
+        <div id="outreach-list">
+          <div class="state-box">
+            <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            <div class="st">Outreach list is empty</div>
+            <div class="ss">Add carriers from search results using the <strong>+ Add</strong> button.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><div class="tdot"></div><span id="tmsg">Done</span></div>
+
+<script>
+// All API calls go to our local Node server — no CORS issues!
+const API = '';  // same origin
+
+const KEYWORDS = [
+  'transport','logistics','freight','express','trucking','carrier',
+  'hauling','delivery','shipping','transit','lines','moving',
+  'distribution','solutions','services','group','enterprises',
+  'inc','llc','corp','industries','national','american','united',
+  'pacific','atlantic','southern','northern','eastern','western'
+];
+
+const STATES = [
+  ['AL','Alabama'],['AK','Alaska'],['AZ','Arizona'],['AR','Arkansas'],['CA','California'],
+  ['CO','Colorado'],['CT','Connecticut'],['DE','Delaware'],['FL','Florida'],['GA','Georgia'],
+  ['HI','Hawaii'],['ID','Idaho'],['IL','Illinois'],['IN','Indiana'],['IA','Iowa'],
+  ['KS','Kansas'],['KY','Kentucky'],['LA','Louisiana'],['ME','Maine'],['MD','Maryland'],
+  ['MA','Massachusetts'],['MI','Michigan'],['MN','Minnesota'],['MS','Mississippi'],['MO','Missouri'],
+  ['MT','Montana'],['NE','Nebraska'],['NV','Nevada'],['NH','New Hampshire'],['NJ','New Jersey'],
+  ['NM','New Mexico'],['NY','New York'],['NC','North Carolina'],['ND','North Dakota'],['OH','Ohio'],
+  ['OK','Oklahoma'],['OR','Oregon'],['PA','Pennsylvania'],['RI','Rhode Island'],['SC','South Carolina'],
+  ['SD','South Dakota'],['TN','Tennessee'],['TX','Texas'],['UT','Utah'],['VT','Vermont'],
+  ['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],['WI','Wisconsin'],['WY','Wyoming']
+];
+
+let outreachList = [];
+let allResults   = [];
+let searching    = false;
+
+// Build state select
+const stateSel = document.getElementById('sel-state');
+stateSel.innerHTML = '<option value="">— Select a state —</option>';
+STATES.forEach(([c,n]) => stateSel.innerHTML += `<option value="${c}">${c} — ${n}</option>`);
+
+function showPanel(name, btn) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('panel-search').style.display   = name === 'search'   ? '' : 'none';
+  document.getElementById('panel-outreach').style.display = name === 'outreach' ? '' : 'none';
+  document.getElementById('ph').textContent = name === 'search' ? 'Carrier Search' : 'Outreach List';
+  if (name === 'outreach') renderOutreach();
+}
+
+function quickRegion(state, city) {
+  stateSel.value = state;
+  document.getElementById('inp-city').value = city || '';
+  document.getElementById('nav-search').click();
+  runSearch();
+}
+
+async function fetchKw(kw, start) {
+  const r = await fetch(`${API}/api/carriers/name/${encodeURIComponent(kw)}?size=50&start=${start}`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const data = await r.json();
+  // FMCSA returns { content: [ { carrier: {...} }, ... ] }
+  // Normalize to a flat array of carrier objects
+  let items = [];
+  if (Array.isArray(data)) items = data;
+  else if (Array.isArray(data.content)) items = data.content;
+  const flat = items.map(x => (x && x.carrier) ? x.carrier : x);
+  return { content: flat };
+}
+
+async function runSearch() {
+  const state = stateSel.value;
+  if (!state) { showToast('Please select a state first'); return; }
+  if (searching) return;
+  searching = true;
+
+  const city   = document.getElementById('inp-city').value.trim().toLowerCase();
+  const nameKw = document.getElementById('name-kw').value.trim().toLowerCase();
+  const auth   = document.getElementById('auth-filter').value;
+  const pgSz   = parseInt(document.getElementById('page-size').value);
+
+  allResults = [];
+  const seen = new Set();
+  document.getElementById('search-btn').disabled = true;
+  document.getElementById('pag-row').style.display = 'none';
+  document.getElementById('results-area').innerHTML = `
+    <div class="state-box">
+      <div class="spinner"></div>
+      <div class="st" id="lt">Fetching carriers in ${state}…</div>
+      <div class="ss" id="ls">Querying FMCSA across multiple carrier name keywords</div>
+    </div>`;
+
+  const pw = document.getElementById('pw');
+  const pb = document.getElementById('pb');
+  const pl = document.getElementById('pl');
+  pw.style.display = 'block'; pl.style.display = 'block';
+  pb.style.width = '0%';
+
+  const kws = nameKw ? [nameKw] : KEYWORDS;
+  let done = 0;
+
+  for (const kw of kws) {
+    for (const start of [0, 50]) {
+      try {
+        const data  = await fetchKw(kw, start);
+        const items = data?.content || [];
+        let added = 0;
+
+        for (const c of items) {
+          const dot = String(c.dotNumber || c.dot || '');
+          if (!dot || seen.has(dot)) continue;
+          if ((c.phyState || '').toUpperCase() !== state.toUpperCase()) continue;
+          if (city) {
+            const cc = (c.phyCity || '').toLowerCase();
+            if (!cc.includes(city)) continue;
+          }
+          if (auth === 'A' && c.commonAuthorityStatus !== 'A' && c.allowedToOperate !== 'Y') continue;
+          seen.add(dot); allResults.push(c); added++;
+        }
+        if (items.length < 50) break;
+      } catch(e) {
+        // silently skip failed keywords
+        break;
+      }
+    }
+
+    done++;
+    const pct = Math.round((done / kws.length) * 100);
+    pb.style.width = pct + '%';
+    pl.textContent = `Keyword ${done}/${kws.length} — ${allResults.length} carriers found in ${state}`;
+
+    if (!nameKw && allResults.length >= 600) break;
+  }
+
+  pw.style.display = 'none'; pl.style.display = 'none';
+  updateStats(allResults);
+  renderPage(0, pgSz);
+  document.getElementById('s-status').textContent =
+    allResults.length ? `${allResults.length} carriers found in ${state}` : '';
+  document.getElementById('search-btn').disabled = false;
+  searching = false;
+}
+
+function renderPage(page, pgSz) {
+  const slice = allResults.slice(page * pgSz, (page + 1) * pgSz);
+  renderTable(slice, page, pgSz);
+}
+
+function renderTable(carriers, page, pgSz) {
+  const area  = document.getElementById('results-area');
+  const state = stateSel.value;
+  const city  = document.getElementById('inp-city').value.trim();
+  const total = allResults.length;
+
+  if (!total) {
+    area.innerHTML = `<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div><div class="st">No carriers found in ${state}${city?' · '+h(city):''}</div><div class="ss">Try removing the city filter, or set Authority Status to "All".</div></div>`;
+    document.getElementById('pag-row').style.display = 'none';
+    return;
+  }
+
+  const saved = new Set(outreachList.map(c => c.dot));
+  const s = page * pgSz + 1, e = Math.min(s + pgSz - 1, total);
+  const label = city ? `${state} · ${h(city)}` : state;
+
+  const rows = carriers.map(c => {
+    const dot   = String(c.dotNumber || c.dot || '');
+    const name  = c.legalName || c.dbaName || c.name || '—';
+    const pCity = c.phyCity   || '';
+    const pSt   = c.phyState  || '';
+    const phone = fmt(c.telephone || c.phone || '');
+    const mc    = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
+    const { cls, lbl } = bdg(c.commonAuthorityStatus, c.allowedToOperate);
+    const isSaved = saved.has(dot);
+    const safer = `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${dot}`;
+    return `<tr>
+      <td style="width:90px;"><a class="dot-link" href="${safer}" target="_blank">${dot}</a></td>
+      <td style="width:auto;font-weight:700;">${h(name)}</td>
+      <td style="width:150px;" class="td-sm">${h(pCity)}${pCity?', ':''}${pSt}</td>
+      <td style="width:130px;" class="td-mono td-sm">${phone||'—'}</td>
+      <td style="width:90px;" class="td-mono td-sm">${mc ? 'MC-'+mc : '—'}</td>
+      <td style="width:90px;"><span class="badge badge-${cls}">${lbl}</span></td>
+      <td style="width:76px;text-align:right;"><button class="add-btn ${isSaved?'added':''}" id="btn-${dot}" onclick='addToOutreach(${JSON.stringify({dot,name,city:pCity,state:pSt,phone})})'>${isSaved?'✓ Saved':'+ Add'}</button></td>
+    </tr>`;
+  }).join('');
+
+  area.innerHTML = `
+    <div class="results-hdr">
+      <div class="results-count">Showing <strong>${s}–${e}</strong> of <strong>${total}</strong> carriers in <strong>${label}</strong></div>
+      <button class="btn btn-ghost" style="font-size:12px;padding:5px 12px;" onclick="exportResults()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export all ${total}
+      </button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>DOT #</th><th>Legal name</th><th>Location</th><th>Phone</th><th>MC #</th><th>Authority</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+
+  // Pagination
+  const totalPages = Math.ceil(total / pgSz);
+  const pRow = document.getElementById('pag-row');
+  if (totalPages <= 1) { pRow.style.display = 'none'; return; }
+  pRow.style.display = 'flex';
+  let btns = `<button class="pb" onclick="renderPage(${page-1},${pgSz})" ${page===0?'disabled':''}>← Prev</button>`;
+  for (let i = 0; i < totalPages; i++) {
+    if (i===0||i===totalPages-1||Math.abs(i-page)<=2)
+      btns += `<button class="pb ${i===page?'cur':''}" onclick="renderPage(${i},${pgSz})" ${i===page?'disabled':''}>${i+1}</button>`;
+    else if (Math.abs(i-page)===3) btns += `<span class="pi">…</span>`;
+  }
+  btns += `<button class="pb" onclick="renderPage(${page+1},${pgSz})" ${page>=totalPages-1?'disabled':''}>Next →</button>`;
+  pRow.innerHTML = btns;
+}
+
+function updateStats(c) {
+  const active = c.filter(x => x.commonAuthorityStatus==='A'||x.allowedToOperate==='Y').length;
+  const cities = new Set(c.map(x=>x.phyCity).filter(Boolean)).size;
+  document.getElementById('sf').textContent = c.length||'—';
+  document.getElementById('sa').textContent = active||'—';
+  document.getElementById('sc').textContent = cities||'—';
+  document.getElementById('so').textContent = outreachList.length;
+}
+
+function bdg(code, allowed) {
+  if (code==='A'||allowed==='Y') return {cls:'active',  lbl:'Active'};
+  if (code==='I')                return {cls:'inactive',lbl:'Inactive'};
+  if (code==='P')                return {cls:'pending', lbl:'Pending'};
+  return {cls:'pending',lbl:code||'Unknown'};
+}
+function fmt(p) {
+  const d=(p||'').replace(/\D/g,'');
+  if(d.length===10) return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+  if(d.length===11&&d[0]==='1') return `(${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}`;
+  return p||'';
+}
+function h(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// Outreach
+function addToOutreach(carrier) {
+  if(outreachList.find(c=>c.dot===carrier.dot)) return;
+  outreachList.push({...carrier,notes:'',addedAt:new Date().toLocaleDateString()});
+  const btn=document.getElementById(`btn-${carrier.dot}`);
+  if(btn){btn.textContent='✓ Saved';btn.classList.add('added');}
+  updOC(); updSP();
+  document.getElementById('so').textContent=outreachList.length;
+  showToast(`${carrier.name} added to outreach list`);
+}
+function removeOutreach(dot){
+  outreachList=outreachList.filter(c=>c.dot!==dot);
+  updOC(); updSP(); renderOutreach();
+  document.getElementById('so').textContent=outreachList.length;
+  const btn=document.getElementById(`btn-${dot}`);
+  if(btn){btn.textContent='+ Add';btn.classList.remove('added');}
+}
+function updateNotes(dot,val){const c=outreachList.find(c=>c.dot===dot);if(c)c.notes=val;}
+function renderOutreach(){
+  const list=document.getElementById('outreach-list');
+  const lbl=document.getElementById('otl');
+  if(!outreachList.length){
+    lbl.textContent='No carriers saved';
+    list.innerHTML=`<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="st">Outreach list is empty</div><div class="ss">Add carriers from search results.</div></div>`;
+    return;
+  }
+  lbl.textContent=`${outreachList.length} carrier${outreachList.length!==1?'s':''} saved`;
+  list.innerHTML=outreachList.map(c=>`
+    <div class="ocard">
+      <div style="flex:1;min-width:0;">
+        <div class="oname">${h(c.name)}</div>
+        <div class="ometa"><span>DOT ${c.dot}</span><span>${c.city?h(c.city)+', ':''}${c.state}</span><span>${c.phone||'no phone'}</span><span>Added ${c.addedAt}</span></div>
+      </div>
+      <div class="oactions">
+        <textarea class="onotes" placeholder="Notes…" onchange="updateNotes('${c.dot}',this.value)">${h(c.notes||'')}</textarea>
+        <a href="https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${c.dot}" target="_blank" class="btn btn-ghost" style="padding:6px 10px;font-size:12px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>SAFER
+        </a>
+        <button class="rb" onclick="removeOutreach('${c.dot}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+      </div>
+    </div>`).join('');
+}
+function updOC(){const b=document.getElementById('nbadge');b.textContent=outreachList.length;b.classList.toggle('show',outreachList.length>0);}
+function updSP(){
+  const el=document.getElementById('sp');
+  if(!outreachList.length){el.innerHTML='<div class="saved-empty">None saved yet</div>';return;}
+  el.innerHTML=outreachList.slice(-4).reverse().map(c=>`<div class="saved-preview">· ${h(c.name)}</div>`).join('')
+    +(outreachList.length>4?`<div class="saved-preview" style="color:var(--text3);">+${outreachList.length-4} more</div>`:'');
+}
+function clearOutreach(){
+  if(!outreachList.length)return;
+  if(!confirm(`Remove all ${outreachList.length} carriers?`))return;
+  outreachList=[];updOC();updSP();renderOutreach();
+  document.getElementById('so').textContent=0;
+  document.querySelectorAll('.add-btn.added').forEach(b=>{b.textContent='+ Add';b.classList.remove('added');});
+}
+
+// Export
+function exportResults(){
+  if(!allResults.length){showToast('No results to export');return;}
+  const rows=[['DOT#','Legal Name','City','State','Phone','MC#','Authority'],
+    ...allResults.map(c=>[c.dotNumber||'',e(c.legalName||c.dbaName||''),e(c.phyCity||''),c.phyState||'',fmt(c.telephone||c.phone||''),c.docketNumber||'',c.commonAuthorityStatus||''])];
+  dlCSV(rows,`carriers_${stateSel.value}_${today()}.csv`);
+  showToast(`Exported ${allResults.length} carriers`);
+}
+function exportOutreach(){
+  if(!outreachList.length){showToast('Outreach list is empty');return;}
+  const rows=[['DOT#','Name','City','State','Phone','Notes','Added'],
+    ...outreachList.map(c=>[c.dot,e(c.name),e(c.city||''),c.state,c.phone,e(c.notes||''),c.addedAt])];
+  dlCSV(rows,`outreach_${today()}.csv`);
+  showToast(`Exported ${outreachList.length} carriers`);
+}
+function dlCSV(rows,fn){const csv=rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=fn;a.click();}
+function e(s){return String(s||'').replace(/"/g,'""');}
+function today(){return new Date().toISOString().split('T')[0];}
+
+function clearSearch(){
+  stateSel.value='';document.getElementById('inp-city').value='';
+  document.getElementById('name-kw').value='';allResults=[];
+  document.getElementById('pag-row').style.display='none';
+  document.getElementById('s-status').textContent='';
+  document.getElementById('results-area').innerHTML=`<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div class="st">Select a state to find carriers</div><div class="ss">Pick any state from the dropdown above.</div></div>`;
+  updateStats([]);
+}
+
+let tt;
+function showToast(msg){const t=document.getElementById('toast');document.getElementById('tmsg').textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2800);}
+document.getElementById('inp-city').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();});
+document.getElementById('name-kw').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();});
+</script>
+</body>
+</html>
