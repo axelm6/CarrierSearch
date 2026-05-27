@@ -353,12 +353,8 @@
 const API = '';  // same origin
 
 const KEYWORDS = [
-  'transport','logistics','freight','express','trucking',
-  'carrier','hauling','shipping','lines','inc',
-  'llc','corp','national','american','services',
-  'group','moving','delivery','transit','solutions',
-  'distribution','industries','western','eastern','southern',
-  'northern','pacific','atlantic','united','global'
+  'transport','trucking','freight','logistics','express',
+  'carrier','hauling','moving','shipping','lines'
 ];
 
 const STATES = [
@@ -457,31 +453,34 @@ async function runSearch() {
   }
 
   function refresh() {
-    const pct = Math.round((completed / (kws.length * 2)) * 100);
+    const pct = Math.round((completed / kws.length) * 100);
     pb.style.width = Math.max(pct, 5) + '%';
-    pl.textContent = `${allResults.length} carriers in ${state} · ${completed}/${kws.length * 2} queries done`;
+    pl.textContent = `${allResults.length} carriers in ${state} · ${completed}/${kws.length} queries done`;
     updateStats(allResults);
     if (allResults.length > 0) {
-      // Replace loading state with live table
+      // Clear spinner and show table immediately
+      const area = document.getElementById('results-area');
+      if (area.querySelector('.spinner')) {
+        area.innerHTML = ''; // clear spinner first
+      }
       renderTable(allResults.slice(0, pgSz), 0, pgSz);
     } else {
       const ls = document.getElementById('ls');
-      if (ls) ls.textContent = 'Searching across keywords…';
+      if (ls) ls.textContent = 'Searching…';
     }
   }
 
   // Fire ALL keywords fully in parallel — no batching
-  const allFetches = kws.flatMap(kw => [0, 50].map(start =>
-    fetch(`/api/carriers?name=${encodeURIComponent(kw)}&size=50&start=${start}`)
+  const allFetches = kws.map(kw =>
+    fetch(`/api/carriers?name=${encodeURIComponent(kw)}&size=50&start=0`)
       .then(r => r.json())
       .then(data => {
-        const items = (data.content || []);
-        items.forEach(c => addCarrier(c));
+        (data.content || []).forEach(c => addCarrier(c));
         completed++;
         refresh();
       })
       .catch(() => { completed++; refresh(); })
-  ));
+  );
 
   await Promise.all(allFetches);
 
