@@ -439,8 +439,9 @@ async function runSearch() {
     if (!dot || seen.has(dot)) return false;
     if ((c.phyState || '').toUpperCase() !== state.toUpperCase()) return false;
     if (city && !(c.phyCity || '').toLowerCase().includes(city)) return false;
-    // Must be allowed to operate
+    // Must be active — check both fields for reliability
     if (c.allowedToOperate !== 'Y') return false;
+    if (c.statusCode === 'I') return false;
     // No brokers
     const censusDesc = (c.censusTypeId && c.censusTypeId.censusTypeDesc) || '';
     if (censusDesc.toUpperCase() === 'BROKER') return false;
