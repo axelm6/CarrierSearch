@@ -750,21 +750,26 @@ function renderTable(carriers, page, pgSz, filteredTotal) {
   const filterNote = qcFilter !== 'all' ? ` <span style="color:var(--amber);font-weight:800;">(filtered: ${total} of ${allResults.length})</span>` : ``;
 
   const rows = carriers.map(c => {
-    const dot   = String(c.dotNumber || c.dot || '');
-    const name  = c.legalName || c.dbaName || c.name || '—';
-    const pCity = c.phyCity   || '';
-    const pSt   = c.phyState  || '';
-    const phone = fmt(c.telephone || c.phone || '');
-    const mc    = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
+    const dot      = String(c.dotNumber || c.dot || '');
+    const name     = c.legalName || c.dbaName || c.name || '—';
+    const pCity    = c.phyCity   || '';
+    const pSt      = c.phyState  || '';
+    const phone    = fmt(c.telephone || c.phone || '');
+    const mc       = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
+    const mcSt     = (c.mcAuthorityStatus || '').toUpperCase();
+    const mcActive = mcSt === 'A';
+    const mcCell   = mc
+      ? `<span style="font-family:'DM Mono',monospace;font-size:12px;color:${mcActive?'var(--text2)':'var(--red)'};">MC-${mc}</span>${mcActive?'':' <span style="font-size:9px;color:var(--red);font-weight:800;">INACT</span>'}`
+      : '—';
     const { cls, lbl } = bdg(c.commonAuthorityStatus, c.allowedToOperate, c.statusCode);
     const isSaved = saved.has(dot);
     const safer = `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${dot}`;
-    return `<tr onclick="openDetailByDot('${dot}')" style="cursor:pointer;">
+    return `<tr onclick="openDetailByDot('${dot}')" style="cursor:pointer;${!mcActive?'background:rgba(192,53,53,0.03);':''}">
       <td style="width:90px;"><a class="dot-link" href="${safer}" target="_blank" onclick="event.stopPropagation()">${dot}</a></td>
       <td style="width:auto;font-weight:700;">${h(name)}</td>
       <td style="width:150px;" class="td-sm">${h(pCity)}${pCity?', ':''}${pSt}</td>
       <td style="width:130px;" class="td-mono td-sm">${phone||'—'}</td>
-      <td style="width:90px;" class="td-mono td-sm">${mc ? 'MC-'+mc : '—'}</td>
+      <td style="width:100px;">${mcCell}</td>
       <td style="width:90px;"><span class="badge badge-${cls}">${lbl}</span></td>
       <td style="width:76px;text-align:right;"><button class="add-btn ${isSaved?'added':''}" id="btn-${dot}" onclick="addToOutreach(this)" data-dot="${dot}" data-name="${h(name)}" data-city="${h(pCity)}" data-state="${pSt}" data-phone="${phone}">${isSaved?'✓ Saved':'+ Add'}</button></td>
     </tr>`;
