@@ -486,6 +486,9 @@ async function runSearch(offsetStart) {
       if (!dot || seen.has(dot)) continue;
       // City filter
       if (city && !(c.phyCity || '').toLowerCase().includes(city)) continue;
+      // Exclude pure brokers via classdef
+      const cd = (c.classdef || '').toUpperCase();
+      if (cd.includes('BROKER') && !cd.includes('CARRIER') && !cd.includes('FOR HIRE')) continue;
       seen.add(dot);
       allResults.push(c);
     }
