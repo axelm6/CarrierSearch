@@ -449,13 +449,12 @@ async function runRegionSearch(states, regionLabel) {
 
   await Promise.all(states.map(async (st) => {
     try {
-      const r = await fetch(`/api/carriers?state=${st}&limit=2000`);
+      const entityType = document.getElementById('auth-filter')?.value || 'carriers';
+      const r = await fetch(`/api/carriers?state=${st}&limit=2000&entityType=${entityType}`);
       const data = await r.json();
       (data.content || []).forEach(c => {
         const dot = String(c.dotNumber || '');
         if (!dot || seen.has(dot)) return;
-        const cd = (c.classdef || '').toUpperCase();
-        if (cd.includes('BROKER') && !cd.includes('CARRIER') && !cd.includes('FOR HIRE')) return;
         seen.add(dot); allResults.push(c);
       });
       updateStateCount(st, (data.content || []).length);
@@ -522,7 +521,8 @@ async function runSearch(offsetStart) {
       url = `/api/carriers?name=${encodeURIComponent(nameKw)}&limit=1000&offset=${offsetStart}`;
     } else {
       // Direct state query — fast, accurate, full database
-      url = `/api/carriers?state=${encodeURIComponent(state)}&limit=2000&offset=${offsetStart}`;
+      const entityType = document.getElementById('auth-filter').value;
+      url = `/api/carriers?state=${encodeURIComponent(state)}&limit=2000&offset=${offsetStart}&entityType=${entityType}`;
     }
 
     const r = await fetch(url);
@@ -860,14 +860,13 @@ async function searchAllUS() {
 
   await Promise.all(STATE_CODES.map(async (st) => {
     try {
-      const r = await fetch(`/api/carriers?state=${st}&limit=2000`);
+      const entityType = document.getElementById('auth-filter')?.value || 'carriers';
+      const r = await fetch(`/api/carriers?state=${st}&limit=2000&entityType=${entityType}`);
       const data = await r.json();
       let stCount = 0;
       (data.content || []).forEach(c => {
         const dot = String(c.dotNumber || '');
         if (!dot || seen.has(dot)) return;
-        const cd = (c.classdef || '').toUpperCase();
-        if (cd.includes('BROKER') && !cd.includes('CARRIER') && !cd.includes('FOR HIRE')) return;
         seen.add(dot); allResults.push(c); stCount++;
       });
       updateStateCount(st, stCount);
