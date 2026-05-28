@@ -69,7 +69,7 @@
   .btn-danger:hover { background: rgba(192,53,53,0.14); }
 
   /* ── Stats ── */
-  .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 20px 28px 0; }
+  .stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 20px 28px 0; }
   .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; box-shadow: var(--shadow); }
   .stat-label { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
   .stat-value { font-size: 24px; font-weight: 800; letter-spacing: -0.03em; }
@@ -82,9 +82,9 @@
   .panel-label { font-size: 9px; font-family: 'DM Mono', monospace; letter-spacing: 0.14em; color: var(--text3); text-transform: uppercase; margin-bottom: 14px; }
 
   /* ── Search card ── */
-  .search-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px 24px; margin-bottom: 20px; box-shadow: var(--shadow); }
-  .loc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-  .flt-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .search-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .loc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .flt-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
   .act-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .field label { display: block; font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 0.04em; margin-bottom: 5px; }
   .field select, .field input { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius); padding: 9px 12px; font-size: 13px; font-family: 'Nunito', sans-serif; font-weight: 600; appearance: none; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
@@ -187,10 +187,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         Carrier Search
       </button>
-      <button class="nav-item" id="nav-map" onclick="showPanel('map',this)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
-        State Map
-      </button>
+
       <button class="nav-item" id="nav-out" onclick="showPanel('outreach',this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Outreach List
@@ -200,13 +197,11 @@
     <div class="s-divider"></div>
     <div class="sidebar-section"><div class="s-label">Quick Regions</div></div>
     <div class="region-list">
-      <button class="region-btn" onclick="quickRegion('IL','')"><div class="rdot" style="background:#32AAE1"></div>Midwest Hub (IL)</button>
-      <button class="region-btn" onclick="quickRegion('GA','')"><div class="rdot" style="background:#E60080"></div>Southeast (GA)</button>
-      <button class="region-btn" onclick="quickRegion('TX','')"><div class="rdot" style="background:#FAB43C"></div>Southwest (TX)</button>
-      <button class="region-btn" onclick="quickRegion('NY','')"><div class="rdot" style="background:#786EAF"></div>Northeast (NY)</button>
-      <button class="region-btn" onclick="quickRegion('CA','')"><div class="rdot" style="background:#C8D23C"></div>West Coast (CA)</button>
-      <button class="region-btn" onclick="quickRegion('FL','')"><div class="rdot" style="background:#E60080"></div>Florida (FL)</button>
-      <button class="region-btn" onclick="quickRegion('OH','')"><div class="rdot" style="background:#32AAE1"></div>Ohio (OH)</button>
+      <button class="region-btn" onclick="quickRegion('IL','')"><div class="rdot" style="background:#32AAE1"></div>Midwest (IL, OH, IN, MI, WI)</button>
+      <button class="region-btn" onclick="quickRegion('GA','')"><div class="rdot" style="background:#E60080"></div>Southeast (GA, FL, SC, NC, TN)</button>
+      <button class="region-btn" onclick="quickRegion('TX','')"><div class="rdot" style="background:#FAB43C"></div>Southwest (TX, AZ, NM, OK)</button>
+      <button class="region-btn" onclick="quickRegion('NY','')"><div class="rdot" style="background:#786EAF"></div>Northeast (NY, NJ, PA, MA, CT)</button>
+      <button class="region-btn" onclick="quickRegion('CA','')"><div class="rdot" style="background:#C8D23C"></div>West Coast (CA, OR, WA)</button>
     </div>
     <div class="sidebar-footer">
       <div class="s-label">Saved carriers</div>
@@ -230,8 +225,7 @@
     </div>
 
     <div class="stats-bar">
-      <div class="stat-card"><div class="stat-label">Carriers Found</div><div class="stat-value c-blue" id="sf">—</div></div>
-      <div class="stat-card"><div class="stat-label">Active Authority</div><div class="stat-value c-lime" id="sa">—</div></div>
+      <div class="stat-card"><div class="stat-label">Active Carriers Found</div><div class="stat-value c-blue" id="sf">—</div></div>
       <div class="stat-card"><div class="stat-label">Cities Covered</div><div class="stat-value c-orange" id="sc">—</div></div>
       <div class="stat-card"><div class="stat-label">Outreach List</div><div class="stat-value c-pink" id="so">0</div></div>
     </div>
@@ -241,6 +235,10 @@
       <!-- Search Panel -->
       <div id="panel-search">
         <div class="grad-bar"></div>
+        <!-- Inline map at top -->
+        <div style="margin-bottom:20px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow);">
+          <div id="us-map-inline" style="width:100%;height:340px;"></div>
+        </div>
         <div class="search-panel">
           <div class="panel-label">Search by carrier location</div>
           <div class="loc-row">
@@ -253,27 +251,28 @@
               <input type="text" id="inp-city" placeholder="e.g. Houston, Chicago, Atlanta…" />
             </div>
           </div>
-          <div class="panel-label" style="margin-top:2px;">Additional filters</div>
-          <div class="flt-row">
+          <div class="flt-row" style="margin-top:10px;">
             <div class="field">
-              <label>Authority status</label>
+              <label>Entity type</label>
               <div class="sel-wrap">
                 <select id="auth-filter">
-                  <option value="A">Motor carriers only · No brokers</option>
+                  <option value="carriers">Carriers only</option>
+                  <option value="brokers">Brokers only</option>
+                  <option value="all">All entities</option>
                 </select>
               </div>
             </div>
             <div class="field">
-              <label>Carrier name keyword (optional)</label>
+              <label>Name keyword (optional)</label>
               <input type="text" id="name-kw" placeholder="e.g. express, eagle, freight…" />
             </div>
             <div class="field">
-              <label>Results per page</label>
+              <label>Per page</label>
               <div class="sel-wrap">
                 <select id="page-size">
-                  <option value="25">25 per page</option>
-                  <option value="50" selected>50 per page</option>
-                  <option value="100">100 per page</option>
+                  <option value="25">25</option>
+                  <option value="50" selected>50</option>
+                  <option value="100">100</option>
                 </select>
               </div>
             </div>
@@ -608,10 +607,8 @@ function renderTable(carriers, page, pgSz) {
 }
 
 function updateStats(c) {
-  const active = c.filter(x => x.allowedToOperate==='Y'||x.commonAuthorityStatus==='A'||x.statusCode==='A').length;
   const cities = new Set(c.map(x=>x.phyCity).filter(Boolean)).size;
   document.getElementById('sf').textContent = c.length||'—';
-  document.getElementById('sa').textContent = active||'—';
   document.getElementById('sc').textContent = cities||'—';
   document.getElementById('so').textContent = outreachList.length;
 }
@@ -729,6 +726,8 @@ function clearSearch(){
 let tt;
 function showToast(msg){const t=document.getElementById('toast');document.getElementById('tmsg').textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2800);}
 document.getElementById('inp-city').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();});
+// Init inline map on load
+window.addEventListener('load', () => { setTimeout(initInlineMap, 100); });
 
 async function searchAllUS() {
   if (searching) return;
@@ -819,7 +818,63 @@ function textColorForCount(count) {
   return '#ffffff';
 }
 
+function initInlineMap() {
+  if (!document.getElementById('us-map-inline')) return;
+  window.inlineLeafletMap = L.map('us-map-inline', {
+    center: [37.8, -96], zoom: 3,
+    scrollWheelZoom: false, preferCanvas: true,
+    zoomControl: false, attributionControl: false,
+  });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+  }).addTo(window.inlineLeafletMap);
+
+  fetch('https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json')
+    .then(r => r.json())
+    .then(geo => {
+      window.inlineStatesLayer = L.geoJson(geo, {
+        style: (feature) => ({
+          fillColor: colorForCount(STATE_COUNTS[STATE_ABBR[feature.properties.name]]),
+          weight: 1, color: '#ffffff', fillOpacity: 0.85,
+        }),
+        onEachFeature: (feature, layer) => {
+          const fullName = feature.properties.name;
+          const code = STATE_ABBR[fullName];
+          if (!code) return;
+          layer.bindTooltip(() => {
+            const count = STATE_COUNTS[code];
+            return count != null
+              ? `<strong>${fullName} (${code})</strong><br/>${count} carriers`
+              : `<strong>${fullName} (${code})</strong><br/>Click to search`;
+          }, { sticky: true });
+          layer.on({
+            mouseover: (e) => e.target.setStyle({ weight: 2, fillOpacity: 1, color: '#32AAE1' }),
+            mouseout:  (e) => window.inlineStatesLayer.resetStyle(e.target),
+            click: () => {
+              document.getElementById('sel-state').value = code;
+              document.getElementById('inp-city').value = '';
+              runSearch();
+            },
+          });
+        }
+      }).addTo(window.inlineLeafletMap);
+    });
+}
+
+function refreshInlineMap() {
+  if (!window.inlineStatesLayer) return;
+  window.inlineStatesLayer.eachLayer(layer => {
+    const code = STATE_ABBR[layer.feature.properties.name];
+    if (code) layer.setStyle({ fillColor: colorForCount(STATE_COUNTS[code]) });
+  });
+}
+
 function initMap() {
+  // Also init inline map if not done yet
+  if (!window.inlineMapInitialized) {
+    window.inlineMapInitialized = true;
+    initInlineMap();
+  }
   if (mapInitialized) { refreshMapColors(); return; }
   mapInitialized = true;
 
@@ -900,8 +955,10 @@ function refreshMapColors() {
 
 function updateStateCount(code, count) {
   STATE_COUNTS[code] = count;
-  document.getElementById('map-status').textContent = Object.keys(STATE_COUNTS).length + ' state(s) searched';
+  const mapStatus = document.getElementById('map-status');
+  if (mapStatus) mapStatus.textContent = Object.keys(STATE_COUNTS).length + ' state(s) searched';
   refreshMapColors();
+  refreshInlineMap();
 }
 // ── End Map ──────────────────────────────────────────────────────────
 
