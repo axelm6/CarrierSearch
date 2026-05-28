@@ -555,6 +555,7 @@ async function runSearch(offsetStart) {
 
     const hasMore = items.length === 1000;
     document.getElementById('s-status').textContent = `✓ ${allResults.length} carriers in ${state}${hasMore ? ' · more available' : ''}`;
+  updateStateCount(state, allResults.length);
 
     // Load more button if there are more results
     if (hasMore) {
@@ -861,14 +862,15 @@ async function searchAllUS() {
     try {
       const r = await fetch(`/api/carriers?state=${st}&limit=2000`);
       const data = await r.json();
+      let stCount = 0;
       (data.content || []).forEach(c => {
         const dot = String(c.dotNumber || '');
         if (!dot || seen.has(dot)) return;
         const cd = (c.classdef || '').toUpperCase();
         if (cd.includes('BROKER') && !cd.includes('CARRIER') && !cd.includes('FOR HIRE')) return;
-        seen.add(dot);
-        allResults.push(c);
+        seen.add(dot); allResults.push(c); stCount++;
       });
+      updateStateCount(st, stCount);
     } catch(e) {}
     done++;
     pb.style.width = Math.round((done / STATE_CODES.length) * 100) + '%';
