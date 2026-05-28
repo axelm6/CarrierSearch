@@ -357,10 +357,9 @@
 const API = '';  // same origin
 
 const KEYWORDS = [
-  'transport','trucking','freight','logistics','express',
-  'carrier','hauling','moving','shipping','lines',
-  'llc','inc','corp','services','group',
-  'delivery','distribution','transit','solutions','national'
+  'a','b','c','d','e','f','g','h','i','j','k','l','m',
+  'n','o','p','q','r','s','t','u','v','w','x','y','z',
+  '1','2','3','4','5'
 ];
 
 const STATES = [
@@ -445,9 +444,6 @@ async function runSearch() {
     if (!dot || seen.has(dot)) return false;
     if ((c.phyState || '').toUpperCase() !== state.toUpperCase()) return false;
     if (city && !(c.phyCity || '').toLowerCase().includes(city)) return false;
-    // Active filter: must be allowed to operate and not explicitly inactive
-    if (c.allowedToOperate !== 'Y') return false;
-    if (c.statusCode === 'I') return false;
     // No pure brokers
     const censusDesc = (c.censusTypeId && c.censusTypeId.censusTypeDesc) || '';
     if (censusDesc.toUpperCase() === 'BROKER') return false;
@@ -460,14 +456,17 @@ async function runSearch() {
   }
 
   // Fire all keyword searches in parallel, collect results
-  await Promise.all(kws.map(kw =>
-    fetch(`/api/carriers?name=${encodeURIComponent(kw)}&size=100&start=0`)
+  const pages = kws.flatMap(kw => [0, 100].map(start => ({kw, start})));
+  let done = 0;
+  await Promise.all(pages.map(({kw, start}) =>
+    fetch(`/api/carriers?name=${encodeURIComponent(kw)}&size=100&start=${start}`)
       .then(r => r.json())
       .then(data => {
         (data.content || []).forEach(c => { if (isCarrier(c)) allResults.push(c); });
-        pb.style.width = '80%';
+        done++;
+        pb.style.width = Math.min(Math.round((done/pages.length)*100), 95) + '%';
       })
-      .catch(() => {})
+      .catch(() => { done++; })
   ));
 
   // All done — render
@@ -499,7 +498,7 @@ async function runSearch() {
         <td style="width:130px;" class="td-mono td-sm">${phone||'—'}</td>
         <td style="width:90px;" class="td-mono td-sm">${mc ? 'MC-'+mc : '—'}</td>
         <td style="width:90px;"><span class="badge badge-${cls}">${lbl}</span></td>
-        <td style="width:76px;text-align:right;"><button class="add-btn ${isSaved?'added':''}" id="btn-${dot}" onclick='addToOutreach(${JSON.stringify({dot,name,city:pCity,state:pSt,phone})})'>${isSaved?'✓ Saved':'+ Add'}</button></td>
+        <td style="width:76px;text-align:right;"><button class="add-btn ${isSaved?'added':''}" id="btn-${dot}" onclick="addToOutreach(this)" data-dot="${dot}" data-name="${h(name)}" data-city="${h(pCity)}" data-state="${pSt}" data-phone="${phone}">${isSaved?'✓ Saved':'+ Add'}</button></td>
       </tr>`;
     }).join('');
     area.innerHTML = `
@@ -578,7 +577,7 @@ function renderTable(carriers, page, pgSz) {
       <td style="width:130px;" class="td-mono td-sm">${phone||'—'}</td>
       <td style="width:90px;" class="td-mono td-sm">${mc ? 'MC-'+mc : '—'}</td>
       <td style="width:90px;"><span class="badge badge-${cls}">${lbl}</span></td>
-      <td style="width:76px;text-align:right;"><button class="add-btn ${isSaved?'added':''}" id="btn-${dot}" onclick='addToOutreach(${JSON.stringify({dot,name,city:pCity,state:pSt,phone})})'>${isSaved?'✓ Saved':'+ Add'}</button></td>
+      <td style="width:76px;text-align:right;"><button class="add-btn ${isSaved?'added':''}" id="btn-${dot}" onclick="addToOutreach(this)" data-dot="${dot}" data-name="${h(name)}" data-city="${h(pCity)}" data-state="${pSt}" data-phone="${phone}">${isSaved?'✓ Saved':'+ Add'}</button></td>
     </tr>`;
   }).join('');
 
@@ -635,7 +634,16 @@ function fmt(p) {
 function h(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 // Outreach
-function addToOutreach(carrier) {
+function addToOutreach(el) {
+  // Accept either a DOM element (with data attrs) or a plain object
+  const carrier = (el && el.dataset) ? {
+    dot:   el.dataset.dot,
+    name:  el.dataset.name,
+    city:  el.dataset.city,
+    state: el.dataset.state,
+    phone: el.dataset.phone
+  } : el;
+  if(!carrier || !carrier.dot) return;
   if(outreachList.find(c=>c.dot===carrier.dot)) return;
   outreachList.push({...carrier,notes:'',addedAt:new Date().toLocaleDateString()});
   const btn=document.getElementById(`btn-${carrier.dot}`);
@@ -744,15 +752,14 @@ async function searchAllUS() {
   const pb = document.getElementById('pb');
   pw.style.display = 'block'; pb.style.width = '5%';
   let completed = 0;
-  await Promise.all(KEYWORDS.map(kw =>
-    fetch('/api/carriers?name=' + encodeURIComponent(kw) + '&size=100&start=0')
+  const allPages = KEYWORDS.flatMap(kw => [0, 100].map(start => ({kw, start})));
+  await Promise.all(allPages.map(({kw, start}) =>
+    fetch('/api/carriers?name=' + encodeURIComponent(kw) + '&size=100&start=' + start)
       .then(r => r.json())
       .then(data => {
         (data.content || []).forEach(c => {
           const dot = String(c.dotNumber || c.dot || '');
           if (!dot || seen.has(dot)) return;
-          if (c.allowedToOperate !== 'Y') return;
-          if (c.statusCode === 'I') return;
           const censusDesc = (c.censusTypeId && c.censusTypeId.censusTypeDesc) || '';
           if (censusDesc.toUpperCase() === 'BROKER') return;
           const bAuth = (c.brokerAuthorityStatus||'').toUpperCase();
@@ -762,7 +769,7 @@ async function searchAllUS() {
           seen.add(dot); allResults.push(c);
         });
         completed++;
-        pb.style.width = Math.round((completed/KEYWORDS.length)*100) + '%';
+        pb.style.width = Math.min(Math.round((completed/allPages.length)*100), 95) + '%';
         const ls = document.getElementById('ls');
         if (ls) ls.textContent = allResults.length + ' carriers found across all states…';
       })
@@ -785,56 +792,56 @@ const STATE_COUNTS = {}; // { "TX": 342, ... } populated as users search
 
 // Simplified US state paths (D3-style viewBox 960x600)
 const STATE_PATHS = {
-  "AL": "M 531 353 L 531 400 L 546 400 L 554 411 L 554 353 Z",
-  "AK": "M 100 450 L 160 450 L 180 480 L 160 510 L 100 510 L 80 480 Z",
-  "AZ": "M 203 327 L 203 400 L 281 400 L 281 327 Z",
-  "AR": "M 490 320 L 490 360 L 551 360 L 551 320 Z",
-  "CA": "M 112 219 L 155 219 L 185 280 L 185 360 L 112 360 Z",
-  "CO": "M 270 263 L 391 263 L 391 323 L 270 323 Z",
-  "CT": "M 773 181 L 795 181 L 795 201 L 773 201 Z",
-  "DE": "M 762 205 L 780 205 L 780 230 L 762 230 Z",
-  "FL": "M 551 390 L 620 390 L 650 450 L 600 480 L 551 430 Z",
-  "GA": "M 551 340 L 610 340 L 610 395 L 554 400 L 531 400 L 531 353 Z",
-  "HI": "M 230 510 L 310 510 L 310 540 L 230 540 Z",
-  "ID": "M 198 150 L 250 150 L 265 210 L 220 240 L 198 210 Z",
-  "IL": "M 491 228 L 530 228 L 530 320 L 491 320 Z",
-  "IN": "M 530 228 L 566 228 L 566 310 L 530 310 Z",
-  "IA": "M 432 213 L 492 213 L 492 257 L 432 257 Z",
-  "KS": "M 349 283 L 451 283 L 451 323 L 349 323 Z",
-  "KY": "M 533 293 L 626 293 L 626 320 L 533 320 Z",
-  "LA": "M 460 385 L 530 385 L 550 410 L 510 430 L 460 415 Z",
-  "ME": "M 810 120 L 845 120 L 845 165 L 810 165 Z",
-  "MD": "M 720 220 L 775 220 L 775 245 L 720 245 Z",
-  "MA": "M 778 168 L 830 168 L 830 188 L 778 188 Z",
-  "MI": "M 535 175 L 590 175 L 590 225 L 535 225 Z",
-  "MN": "M 430 148 L 490 148 L 490 213 L 430 213 Z",
-  "MS": "M 500 340 L 531 340 L 531 410 L 500 410 Z",
-  "MO": "M 451 283 L 531 283 L 531 340 L 490 360 L 451 340 Z",
-  "MT": "M 198 123 L 345 123 L 345 185 L 198 185 Z",
-  "NE": "M 349 243 L 451 243 L 451 283 L 349 283 Z",
-  "NV": "M 155 219 L 210 219 L 210 327 L 155 360 Z",
-  "NH": "M 795 148 L 815 148 L 815 190 L 795 190 Z",
-  "NJ": "M 752 198 L 778 198 L 778 228 L 752 228 Z",
-  "NM": "M 270 323 L 355 323 L 355 400 L 270 400 Z",
-  "NY": "M 700 165 L 773 165 L 773 210 L 700 210 Z",
-  "NC": "M 622 295 L 735 295 L 735 328 L 622 328 Z",
-  "ND": "M 347 123 L 432 123 L 432 163 L 347 163 Z",
-  "OH": "M 566 228 L 618 228 L 618 293 L 566 293 Z",
-  "OK": "M 349 323 L 491 323 L 491 360 L 349 360 Z",
-  "OR": "M 112 160 L 210 160 L 210 219 L 112 219 Z",
-  "PA": "M 660 195 L 752 195 L 752 238 L 660 238 Z",
-  "RI": "M 800 188 L 818 188 L 818 205 L 800 205 Z",
-  "SC": "M 610 328 L 670 328 L 670 368 L 610 368 Z",
-  "SD": "M 347 163 L 432 163 L 432 213 L 347 213 Z",
-  "TN": "M 505 320 L 625 320 L 625 350 L 505 350 Z",
-  "TX": "M 349 360 L 490 360 L 490 460 L 390 480 L 349 440 Z",
-  "UT": "M 210 245 L 280 245 L 280 327 L 210 327 Z",
-  "VT": "M 775 148 L 795 148 L 795 181 L 775 181 Z",
-  "VA": "M 636 255 L 752 255 L 752 295 L 636 295 Z",
-  "WA": "M 112 120 L 210 120 L 210 160 L 112 160 Z",
-  "WV": "M 618 253 L 665 253 L 665 295 L 618 295 Z",
-  "WI": "M 478 168 L 535 168 L 535 228 L 478 228 Z",
-  "WY": "M 270 185 L 372 185 L 372 248 L 270 248 Z"
+"AL":"M 596 353 L 595 324 L 594 288 L 574 289 L 565 289 L 565 302 L 558 355 L 560 371 L 560 390 L 574 400 L 584 400 L 595 388 Z",
+"AK":"M 156 440 L 130 455 L 106 465 L 98 480 L 110 496 L 140 505 L 168 498 L 188 480 L 192 465 L 178 450 Z M 220 510 L 230 520 L 245 515 L 240 505 Z M 250 505 L 260 512 L 272 508 L 265 498 Z",
+"AZ":"M 180 308 L 178 330 L 176 370 L 200 385 L 218 398 L 244 410 L 254 392 L 258 340 L 258 308 Z",
+"AR":"M 520 295 L 518 320 L 518 345 L 556 348 L 572 347 L 574 330 L 576 308 L 558 304 L 540 300 Z",
+"CA":"M 86 238 L 90 260 L 94 290 L 100 320 L 108 350 L 120 376 L 140 388 L 158 370 L 168 348 L 176 320 L 178 308 L 166 284 L 148 260 L 130 238 L 110 224 Z",
+"CO":"M 258 270 L 258 308 L 258 340 L 358 338 L 358 270 Z",
+"CT":"M 742 178 L 738 196 L 756 200 L 762 182 Z",
+"DE":"M 740 210 L 738 228 L 750 232 L 756 220 L 752 208 Z",
+"FL":"M 560 390 L 560 371 L 574 400 L 584 400 L 600 410 L 614 420 L 628 440 L 636 460 L 626 480 L 610 492 L 594 488 L 580 472 L 568 452 L 556 430 Z",
+"GA":"M 560 390 L 595 388 L 608 384 L 620 375 L 626 355 L 624 330 L 598 325 L 576 308 L 574 330 L 572 347 L 556 348 L 558 355 L 558 371 Z",
+"HI":"M 192 480 L 200 488 L 212 486 L 214 478 L 204 472 Z M 220 472 L 228 480 L 240 476 L 238 466 L 226 464 Z M 248 468 L 256 474 L 264 470 L 260 460 Z M 270 462 L 280 468 L 288 464 L 282 454 Z",
+"ID":"M 178 168 L 170 196 L 164 224 L 168 248 L 176 260 L 188 260 L 202 248 L 214 230 L 220 210 L 218 188 L 208 168 Z",
+"IL":"M 520 230 L 516 256 L 514 284 L 518 295 L 520 295 L 540 300 L 548 285 L 550 260 L 548 235 Z",
+"IN":"M 548 235 L 550 260 L 548 285 L 570 284 L 572 262 L 572 237 Z",
+"IA":"M 460 220 L 458 244 L 460 258 L 516 256 L 520 230 L 502 222 Z",
+"KS":"M 360 295 L 358 338 L 460 338 L 462 295 Z",
+"KY":"M 548 285 L 548 308 L 560 315 L 580 318 L 596 315 L 616 308 L 626 295 L 612 285 L 590 282 L 572 284 Z",
+"LA":"M 492 375 L 488 395 L 492 415 L 510 425 L 530 420 L 548 408 L 556 390 L 540 385 L 520 378 Z",
+"ME":"M 790 138 L 784 158 L 790 175 L 808 172 L 818 158 L 812 140 Z",
+"MD":"M 698 220 L 694 234 L 712 240 L 730 238 L 740 228 L 738 218 L 720 216 Z",
+"MA":"M 748 172 L 744 186 L 762 190 L 778 188 L 782 176 L 768 170 Z",
+"MI":"M 542 175 L 540 198 L 548 215 L 564 220 L 578 214 L 582 196 L 572 178 Z M 532 220 L 526 232 L 536 242 L 550 240 L 556 228 Z",
+"MN":"M 460 148 L 456 172 L 454 196 L 458 220 L 460 220 L 502 222 L 510 205 L 510 175 L 506 150 Z",
+"MS":"M 520 295 L 518 320 L 518 345 L 520 378 L 540 385 L 548 375 L 558 355 L 556 348 L 518 345 L 518 320 L 520 295 Z M 528 295 L 528 345 L 548 345 L 558 348 L 558 355 L 548 375 L 540 385 L 548 408 L 548 375 Z",
+"MO":"M 460 258 L 458 284 L 462 295 L 460 338 L 520 345 L 518 320 L 520 295 L 518 295 L 514 284 L 516 256 L 460 258 Z",
+"MT":"M 178 138 L 178 168 L 208 168 L 280 165 L 340 162 L 342 138 Z",
+"NE":"M 358 248 L 358 270 L 358 295 L 360 295 L 462 295 L 462 270 L 462 248 Z",
+"NV":"M 140 238 L 130 238 L 110 224 L 100 250 L 104 280 L 110 310 L 130 330 L 148 340 L 158 330 L 166 310 L 176 290 L 176 270 L 176 248 L 166 238 Z",
+"NH":"M 768 150 L 764 172 L 766 188 L 782 188 L 782 176 L 778 158 L 774 148 Z",
+"NJ":"M 726 210 L 722 226 L 728 240 L 742 238 L 748 226 L 744 212 Z",
+"NM":"M 244 310 L 244 370 L 244 410 L 258 410 L 360 408 L 360 338 L 358 308 L 258 308 Z",
+"NY":"M 660 178 L 654 200 L 660 215 L 680 218 L 700 218 L 718 215 L 726 208 L 726 196 L 710 185 L 692 178 Z M 730 178 L 740 186 L 748 178 L 742 168 L 730 170 Z",
+"NC":"M 604 300 L 598 318 L 618 325 L 640 328 L 666 325 L 694 320 L 712 310 L 718 298 L 704 292 L 680 290 L 658 292 L 636 294 Z",
+"ND":"M 342 138 L 340 162 L 454 162 L 456 148 L 456 138 Z",
+"OH":"M 572 237 L 572 262 L 572 284 L 590 282 L 612 278 L 626 268 L 630 248 L 626 230 L 604 225 L 586 228 Z",
+"OK":"M 358 338 L 358 370 L 360 380 L 462 380 L 518 378 L 518 345 L 460 338 Z",
+"OR":"M 86 168 L 86 198 L 88 228 L 110 224 L 130 218 L 148 212 L 166 210 L 176 208 L 178 188 L 178 168 L 148 160 Z",
+"PA":"M 628 205 L 624 228 L 660 232 L 694 232 L 698 220 L 698 208 L 672 202 L 648 200 Z",
+"RI":"M 762 182 L 758 192 L 762 200 L 772 198 L 772 186 Z",
+"SC":"M 598 325 L 596 345 L 606 360 L 624 368 L 640 362 L 654 348 L 658 332 L 640 328 L 618 325 Z",
+"SD":"M 342 162 L 340 192 L 340 220 L 360 222 L 460 222 L 460 220 L 458 196 L 456 172 L 454 162 Z",
+"TN":"M 548 308 L 548 330 L 556 338 L 572 340 L 598 338 L 624 335 L 626 320 L 626 308 L 616 308 L 596 315 L 580 318 L 560 315 Z",
+"TX":"M 244 370 L 244 410 L 258 410 L 280 430 L 300 460 L 318 490 L 340 510 L 370 515 L 400 510 L 430 495 L 448 478 L 460 460 L 462 430 L 462 400 L 462 380 L 360 380 L 358 370 Z",
+"UT":"M 176 248 L 176 290 L 176 310 L 176 320 L 176 340 L 258 340 L 258 308 L 258 270 L 258 248 Z",
+"VT":"M 752 152 L 748 172 L 752 182 L 766 182 L 768 166 L 764 152 Z",
+"VA":"M 626 268 L 620 285 L 626 295 L 640 300 L 660 300 L 680 298 L 700 292 L 718 285 L 720 272 L 706 262 L 688 258 L 668 260 L 648 264 Z",
+"WA":"M 86 138 L 86 168 L 148 160 L 178 158 L 178 138 Z",
+"WV":"M 626 248 L 626 268 L 648 264 L 668 258 L 672 245 L 662 232 L 648 232 L 636 238 Z",
+"WI":"M 504 175 L 500 198 L 500 220 L 510 230 L 520 230 L 548 235 L 556 228 L 552 208 L 548 188 L 536 175 Z",
+"WY":"M 218 188 L 220 210 L 216 230 L 220 248 L 258 248 L 358 248 L 358 210 L 358 188 Z"
 };
 
 const STATE_LABELS = {
