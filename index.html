@@ -198,6 +198,31 @@
     font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 700; color: #2c3e50;
     padding: 0; pointer-events: none;
   }
+  /* ── Carrier Qualification Scorecard ── */
+  .qual-card { background: linear-gradient(135deg, rgba(74,154,85,0.04) 0%, rgba(50,170,225,0.04) 100%); border: 1px solid rgba(74,154,85,0.18); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 20px; }
+  .qual-title { font-size: 9px; font-family: 'DM Mono', monospace; letter-spacing: 0.14em; color: var(--text3); text-transform: uppercase; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .qual-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); gap: 10px; }
+  .qual-row:last-child { border-bottom: none; }
+  .qual-label { font-size: 11px; color: var(--text2); font-weight: 700; }
+  .qual-dot { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 700; }
+  .qdot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 6px currentColor; }
+  .qdot-green  { background: #3db55d; color: #3db55d; }
+  .qdot-amber  { background: var(--orange); color: var(--orange); }
+  .qdot-red    { background: var(--red); color: var(--red); }
+  .qdot-gray   { background: var(--text3); color: var(--text3); box-shadow: none; }
+  .qual-good   { color: #3db55d; }
+  .qual-warn   { color: var(--amber); }
+  .qual-bad    { color: var(--red); }
+  .qual-unk    { color: var(--text3); }
+  .qual-loading { display: inline-block; width: 11px; height: 11px; border: 2px solid var(--surface3); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  .qual-verdict { margin-top: 10px; padding: 8px 12px; border-radius: var(--radius); font-size: 11px; font-weight: 800; font-family: 'DM Mono', monospace; text-align: center; letter-spacing: 0.05em; }
+  .qual-verdict-pass { background: var(--green-bg); color: var(--green); border: 1px solid rgba(74,154,85,0.25); }
+  .qual-verdict-warn { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(176,122,16,0.25); }
+  .qual-verdict-fail { background: var(--red-bg); color: var(--red); border: 1px solid rgba(192,53,53,0.2); }
+  .qual-verdict-unk  { background: var(--surface2); color: var(--text3); border: 1px solid var(--border); }
+  .btn-freightguard { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: var(--radius); background: #1a3a5c; color: #fff; border: none; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none; width: 100%; justify-content: center; transition: background 0.15s; margin-top: 8px; }
+  .btn-freightguard:hover { background: #142d47; }
+  .btn-freightguard svg { width: 14px; height: 14px; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -405,14 +430,14 @@
   <div class="detail-body" id="dp-body">
     <div class="detail-loading"><div class="detail-spinner"></div>Loading carrier details…</div>
   </div>
-  <div class="detail-actions">
-    <a id="dp-safer-link" href="#" target="_blank" class="btn btn-ghost" style="flex:1;justify-content:center;font-size:12px;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-      View on SAFER
-    </a>
-    <button id="dp-add-btn" class="btn btn-primary" style="flex:1;justify-content:center;font-size:12px;" onclick="addFromPanel()">
+  <div class="detail-actions" style="flex-direction:column;gap:8px;">
+    <button id="dp-add-btn" class="btn btn-primary" style="width:100%;justify-content:center;font-size:13px;" onclick="addFromPanel()">
       + Add to Outreach
     </button>
+    <a id="dp-safer-link" href="#" target="_blank" class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      View Full SAFER Profile
+    </a>
   </div>
 </div>
 
@@ -992,34 +1017,61 @@ function openDetail(carrier) {
   addBtn.disabled = !!isSaved;
 }
 
-async function renderDetailPanel(c) {
-  const dot = c.dotNumber || '';
-  const classdef = c.classdef || '—';
-  const powerUnits = c.totalPowerUnits || '—';
-  const drivers = c.totalDrivers || '—';
-  const mc = c.docketNumber ? 'MC-' + c.docketNumber : '—';
-  const phone = c.telephone || '—';
-  const email = c.email || '';
-  const officer = c.companyOfficer || '';
+// ── Scorecard helpers ────────────────────────────────────────────────
+function qualDot(status) {
+  // Returns {cls, label} for a qual row
+  if (status === 'good')    return { cls: 'green', dot: 'qdot-green', label: 'GOOD' };
+  if (status === 'warn')    return { cls: 'warn',  dot: 'qdot-amber', label: 'REVIEW' };
+  if (status === 'bad')     return { cls: 'bad',   dot: 'qdot-red',   label: 'FAIL' };
+  return { cls: 'unk', dot: 'qdot-gray', label: 'N/A' };
+}
+function qualRow(label, status) {
+  const q = qualDot(status);
+  return `<div class="qual-row">
+    <span class="qual-label">${label}</span>
+    <span class="qual-dot qual-${q.cls}"><span class="qdot ${q.dot}"></span>${q.label}</span>
+  </div>`;
+}
+function loadingQualRow(label) {
+  return `<div class="qual-row">
+    <span class="qual-label">${label}</span>
+    <span class="qual-dot qual-unk"><span class="qual-loading"></span></span>
+  </div>`;
+}
 
-  // Render immediately with loading state for authority
+async function renderDetailPanel(c) {
+  const dot        = c.dotNumber || '';
+  const classdef   = c.classdef || '—';
+  const powerUnits = c.totalPowerUnits || '—';
+  const drivers    = c.totalDrivers || '—';
+  const mc         = c.docketNumber ? 'MC-' + c.docketNumber : '—';
+  const phone      = c.telephone || '—';
+  const email      = c.email || '';
+  const officer    = c.companyOfficer || '';
+
+  const safer411   = `https://www.carrier411.com/carrier-search/?usdot=${dot}`;
+  const saferUrl   = `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${dot}`;
+
+  // Render skeleton with loading scorecard
   document.getElementById('dp-body').innerHTML = `
-    <div class="detail-section">
-      <div class="detail-section-title">Operating Authority</div>
-      <div class="detail-row" id="dp-auth-row">
-        <span class="detail-label">Authority Status</span>
-        <span class="detail-value" id="dp-auth-val" style="display:flex;align-items:center;gap:6px;">
-          <span style="width:12px;height:12px;border:2px solid var(--surface3);border-top-color:var(--blue);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;"></span>
-          Checking…
-        </span>
-      </div>
-      <div class="detail-row"><span class="detail-label">MC #</span><span class="detail-value">${mc}</span></div>
-      <div class="detail-row"><span class="detail-label">Operation Type</span><span class="detail-value">${classdef}</span></div>
+    <div class="qual-card" id="dp-qual-card">
+      <div class="qual-title">Carrier Qualification</div>
+      ${loadingQualRow('BASIC Percentile Scores')}
+      ${loadingQualRow('Carrier Safety Rating')}
+      ${loadingQualRow('Carrier Authority')}
+      ${loadingQualRow('Insurance Coverage')}
+      <div id="dp-qual-verdict" class="qual-verdict qual-verdict-unk" style="margin-top:10px;">Checking…</div>
+      <a href="${safer411}" target="_blank" class="btn-freightguard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Check FreightGuard on Carrier411
+      </a>
     </div>
+
     <div class="detail-section">
       <div class="detail-section-title">Identity</div>
       <div class="detail-row"><span class="detail-label">USDOT #</span><span class="detail-value blue">${dot}</span></div>
-      <div class="detail-row"><span class="detail-label">USDOT Status</span><span class="detail-value green">Active</span></div>
+      <div class="detail-row"><span class="detail-label">MC #</span><span class="detail-value">${mc}</span></div>
+      <div class="detail-row"><span class="detail-label">Operation Type</span><span class="detail-value">${classdef}</span></div>
       ${officer ? `<div class="detail-row"><span class="detail-label">Officer</span><span class="detail-value">${h(officer)}</span></div>` : ''}
     </div>
     <div class="detail-section">
@@ -1036,7 +1088,7 @@ async function renderDetailPanel(c) {
     </div>
     <div class="detail-section">
       <div class="detail-section-title">Quick Actions</div>
-      <a href="https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${dot}" target="_blank" style="display:block;padding:8px 12px;background:var(--surface2);border-radius:var(--radius);font-size:12px;color:var(--blue);text-decoration:none;font-weight:700;margin-bottom:6px;">
+      <a href="${saferUrl}" target="_blank" style="display:block;padding:8px 12px;background:var(--surface2);border-radius:var(--radius);font-size:12px;color:var(--blue);text-decoration:none;font-weight:700;margin-bottom:6px;">
         🔍 Full SAFER Profile
       </a>
       <a href="tel:${(c.telephone||'').replace(/\D/g,'')}" style="display:block;padding:8px 12px;background:var(--surface2);border-radius:var(--radius);font-size:12px;color:var(--text2);text-decoration:none;font-weight:700;">
@@ -1044,29 +1096,96 @@ async function renderDetailPanel(c) {
       </a>
     </div>`;
 
-  // Now fetch live authority status from QCMobile API
-  try {
-    const r = await fetch(`/api/authority?dot=${dot}`);
-    const data = await r.json();
-    const authEl = document.getElementById('dp-auth-val');
-    if (!authEl) return;
+  // ── Fetch authority + BASIC scores in parallel ────────────────────
+  const [authData, basicData] = await Promise.allSettled([
+    fetch(`/api/authority?dot=${dot}`).then(r => r.json()),
+    fetch(`https://ai.fmcsa.dot.gov/SMS/api/Carrier/${dot}/BasicInfo?apiKey=`)
+      .then(r => r.json()).catch(() => null),
+  ]);
 
-    const commonAuth = data.commonAuthorityStatus || '';
-    const contractAuth = data.contractAuthorityStatus || '';
-    const isAuthorized = commonAuth === 'A' || contractAuth === 'A';
-    const isPending = commonAuth === 'P' || contractAuth === 'P';
+  const auth  = authData.status  === 'fulfilled' ? authData.value  : {};
+  const basic = basicData.status === 'fulfilled' ? basicData.value : null;
 
-    if (isAuthorized) {
-      authEl.innerHTML = `<span style="color:var(--green);font-weight:800;">✅ AUTHORIZED FOR PROPERTY</span>`;
-    } else if (isPending) {
-      authEl.innerHTML = `<span style="color:var(--amber);font-weight:800;">⏳ PENDING</span>`;
-    } else {
-      authEl.innerHTML = `<span style="color:var(--red);font-weight:800;">❌ NOT AUTHORIZED</span>`;
-    }
-  } catch(e) {
-    const authEl = document.getElementById('dp-auth-val');
-    if (authEl) authEl.innerHTML = `<span style="color:var(--text3);">Unable to check</span>`;
+  // ── Score each check ─────────────────────────────────────────────
+  // 1. BASIC Percentile Scores — from SMS API
+  let basicStatus = 'unk';
+  let basicDetail = '';
+  if (basic && basic.basics) {
+    const alerts = basic.basics.filter(b => b.alertIssued === 'Y').length;
+    if      (alerts === 0) { basicStatus = 'good'; basicDetail = 'No alerts'; }
+    else if (alerts <= 2)  { basicStatus = 'warn'; basicDetail = `${alerts} alert${alerts>1?'s':''}`; }
+    else                   { basicStatus = 'bad';  basicDetail = `${alerts} alerts`; }
+  } else {
+    // SMS API requires registration key — fall back to 'unk' gracefully
+    basicStatus = 'unk';
   }
+
+  // 2. Safety Rating
+  let safetyStatus = 'unk';
+  const sr = (auth.safetyRating || '').toUpperCase();
+  if      (sr === 'SATISFACTORY')   safetyStatus = 'good';
+  else if (sr === 'CONDITIONAL')    safetyStatus = 'warn';
+  else if (sr === 'UNSATISFACTORY') safetyStatus = 'bad';
+  else if (sr === '' || sr === 'NOT RATED' || sr === 'NONE') safetyStatus = 'unk'; // unrated is normal/OK
+
+  // 3. Carrier Authority
+  let authStatus = 'unk';
+  const ca = auth.commonAuthorityStatus || '';
+  const ct = auth.contractAuthorityStatus || '';
+  if      (ca === 'A' || ct === 'A') authStatus = 'good';
+  else if (ca === 'P' || ct === 'P') authStatus = 'warn';
+  else if (ca === 'I' || ct === 'I') authStatus = 'bad';
+
+  // 4. Insurance Coverage
+  let insStatus = 'unk';
+  const insReq  = (auth.insuranceRequired || '').toUpperCase();
+  const insFile = (auth.insuranceOnFile   || '').toUpperCase();
+  const oos     = auth.outOfServiceDate || '';
+  if      (oos)              insStatus = 'bad';   // out of service overrides
+  else if (insFile === 'Y')  insStatus = 'good';
+  else if (insFile === 'N' && insReq === 'Y') insStatus = 'bad';
+  else if (insReq === 'Y')   insStatus = 'warn';  // required but unknown if on file
+
+  // ── Overall verdict ──────────────────────────────────────────────
+  const statuses = [basicStatus, safetyStatus, authStatus, insStatus];
+  const hasBad   = statuses.includes('bad');
+  const hasWarn  = statuses.includes('warn');
+  // Authority is mandatory — if it's bad the overall is always fail
+  let verdict, verdictCls;
+  if (authStatus === 'bad' || hasBad) {
+    verdict = '❌  NOT RECOMMENDED'; verdictCls = 'qual-verdict-fail';
+  } else if (authStatus === 'good' && !hasWarn) {
+    verdict = '✅  LOOKS GOOD TO USE'; verdictCls = 'qual-verdict-pass';
+  } else if (authStatus === 'good' && hasWarn) {
+    verdict = '⚠️  REVIEW BEFORE USE'; verdictCls = 'qual-verdict-warn';
+  } else {
+    verdict = '⏳  VERIFY MANUALLY'; verdictCls = 'qual-verdict-unk';
+  }
+
+  // ── Re-render scorecard with real data ──────────────────────────
+  const basicLabel = basicDetail ? `BASIC Percentile Scores (${basicDetail})` : 'BASIC Percentile Scores';
+  const safetyLabel = sr && sr !== 'NONE' && sr !== 'NOT RATED' && sr !== ''
+    ? `Safety Rating (${sr.charAt(0) + sr.slice(1).toLowerCase()})` : 'Safety Rating (Not Rated)';
+  const authLabel = ca === 'A' || ct === 'A' ? 'Carrier Authority (Active)' :
+                    ca === 'P' || ct === 'P' ? 'Carrier Authority (Pending)' :
+                    ca === 'I' || ct === 'I' ? 'Carrier Authority (Inactive)' : 'Carrier Authority';
+  const insLabel = oos ? `Insurance / OOS (Out of Service ${oos})` :
+                   insFile === 'Y' ? 'Insurance Coverage (On File)' :
+                   insFile === 'N' ? 'Insurance Coverage (Not on File)' : 'Insurance Coverage';
+
+  const card = document.getElementById('dp-qual-card');
+  if (!card) return;
+  card.innerHTML = `
+    <div class="qual-title">Carrier Qualification</div>
+    ${qualRow(basicLabel, basicStatus)}
+    ${qualRow(safetyLabel, safetyStatus)}
+    ${qualRow(authLabel, authStatus)}
+    ${qualRow(insLabel, insStatus)}
+    <div class="qual-verdict ${verdictCls}" style="margin-top:10px;">${verdict}</div>
+    <a href="${safer411}" target="_blank" class="btn-freightguard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Check FreightGuard on Carrier411
+    </a>`;
 }
 
 function closeDetail() {
