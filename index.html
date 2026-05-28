@@ -732,10 +732,10 @@ document.getElementById('inp-city').addEventListener('keydown',e=>{if(e.key==='E
 
 async function searchAllUS() {
   if (searching) return;
-  const pgSz = parseInt(document.getElementById('page-size').value);
   searching = true;
   allResults = [];
   const seen = new Set();
+  const pgSz = parseInt(document.getElementById('page-size').value);
   const btn = document.getElementById('all-us-btn');
   const searchBtn = document.getElementById('search-btn');
   btn.disabled = true; searchBtn.disabled = true;
@@ -744,42 +744,44 @@ async function searchAllUS() {
   document.getElementById('results-area').innerHTML = `
     <div class="state-box">
       <div class="spinner"></div>
-      <div class="st">Searching all US carriers…</div>
-      <div class="ss" id="ls" style="font-family:'DM Mono',monospace;font-size:11px;">This may take 10–15 seconds</div>
+      <div class="st">Searching all 50 states…</div>
+      <div class="ss" id="ls" style="font-family:'DM Mono',monospace;font-size:11px;">Querying full FMCSA database across all states</div>
     </div>`;
   const pw = document.getElementById('pw');
   const pb = document.getElementById('pb');
   pw.style.display = 'block'; pb.style.width = '5%';
-  let completed = 0;
-  const allPages = KEYWORDS.flatMap(kw => [0, 100, 200].map(start => ({kw, start})));
-  await Promise.all(allPages.map(({kw, start}) =>
-    fetch('/api/carriers?name=' + encodeURIComponent(kw) + '&size=100&start=' + start)
-      .then(r => r.json())
-      .then(data => {
-        (data.content || []).forEach(c => {
-          const dot = String(c.dotNumber || c.dot || '');
-          if (!dot || seen.has(dot)) return;
-          // CONDITION 1: USDOT Status must be ACTIVE
-          if (c.statusCode !== 'A') return;
-          // CONDITION 2: Entity Type must be CARRIER
-          const censusType = (c.censusTypeId && c.censusTypeId.censusType) || '';
-          if (censusType !== 'C') return;
-          seen.add(dot); allResults.push(c);
-        });
-        completed++;
-        pb.style.width = Math.min(Math.round((completed/allPages.length)*100), 95) + '%';
-        const ls = document.getElementById('ls');
-        if (ls) ls.textContent = allResults.length + ' carriers found across all states…';
-      })
-      .catch(() => { completed++; })
-  ));
+
+  const STATE_CODES = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
+    'HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS',
+    'MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA',
+    'RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'];
+
+  let done = 0;
+
+  await Promise.all(STATE_CODES.map(async (st) => {
+    try {
+      const r = await fetch(`/api/carriers?state=${st}&limit=500`);
+      const data = await r.json();
+      (data.content || []).forEach(c => {
+        const dot = String(c.dotNumber || '');
+        if (!dot || seen.has(dot)) return;
+        const cd = (c.classdef || '').toUpperCase();
+        if (cd.includes('BROKER') && !cd.includes('CARRIER') && !cd.includes('FOR HIRE')) return;
+        seen.add(dot);
+        allResults.push(c);
+      });
+    } catch(e) {}
+    done++;
+    pb.style.width = Math.round((done / STATE_CODES.length) * 100) + '%';
+    const ls = document.getElementById('ls');
+    if (ls) ls.textContent = `${allResults.length} carriers found · ${done}/${STATE_CODES.length} states searched`;
+  }));
+
   allResults.sort((a,b) => (a.phyState||'').localeCompare(b.phyState||'') || (a.legalName||'').localeCompare(b.legalName||''));
   updateStats(allResults);
   renderPage(0, pgSz);
-  document.getElementById('s-status').textContent = allResults.length
-    ? '✓ ' + allResults.length + ' carriers across all US states'
-    : 'No results found';
-  pw.style.display = 'none'; pb.style.width = '0%';
+  document.getElementById('s-status').textContent = `✓ ${allResults.length} carriers across all US states`;
+  pw.style.display = 'none';
   btn.disabled = false; searchBtn.disabled = false;
   searching = false;
 }
