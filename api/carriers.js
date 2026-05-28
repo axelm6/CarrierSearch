@@ -9,7 +9,7 @@ function fetchJSON(url) {
       res.on('data', chunk => raw += chunk);
       res.on('end', () => {
         try { resolve(JSON.parse(raw)); }
-        catch(e) { reject(new Error('non-JSON: ' + raw.slice(0, 120))); }
+        catch(e) { reject(new Error('non-JSON: ' + raw.slice(0, 200))); }
       });
     }).on('error', reject);
   });
@@ -28,39 +28,46 @@ module.exports = async (req, res) => {
       let where = `phy_state='${state.toUpperCase()}' AND status_code='A'`;
 
       if (entityType === 'carriers') {
-        // Must have MC authority — check all 3 docket prefix slots
         where += ` AND (classdef IS NULL OR classdef='' OR (classdef NOT LIKE '%BROKER%' AND classdef NOT LIKE '%FORWARDER%'))`;
-        where += ` AND (docket1prefix='MC' OR docket2prefix='MC' OR docket3prefix='MC')`;
+        // Must have MC authority in one of the 3 docket slots AND that slot must be active
+        where += ` AND ((docket1prefix='MC' AND docket1_status_code='A') OR (docket2prefix='MC' AND docket2_status_code='A') OR (docket3prefix='MC' AND docket3_status_code='A'))`;
       } else if (entityType === 'brokers') {
         where += ` AND (classdef LIKE '%BROKER%' OR classdef LIKE '%FORWARDER%')`;
-        where += ` AND (docket1prefix='MC' OR docket2prefix='MC' OR docket3prefix='MC' OR docket1prefix='FF' OR docket2prefix='FF')`;
+        where += ` AND ((docket1prefix='MC' AND docket1_status_code='A') OR (docket2prefix='MC' AND docket2_status_code='A') OR (docket3prefix='MC' AND docket3_status_code='A') OR (docket1prefix='FF' AND docket1_status_code='A'))`;
       }
-      // 'all' = no filter
 
       const url = `https://data.transportation.gov/resource/az4n-8mr2.json?$where=${encodeURIComponent(where)}&$limit=${limit}&$offset=${offset}&$order=legal_name ASC`;
       const data = await fetchJSON(url);
       const items = Array.isArray(data) ? data : [];
 
-      const normalized = items.map(c => ({
-        dotNumber:       c.dot_number,
-        legalName:       c.legal_name,
-        dbaName:         c.dba_name,
-        phyCity:         c.phy_city,
-        phyState:        c.phy_state,
-        phyStreet:       c.phy_street,
-        phyZipcode:      c.phy_zip,
-        telephone:       c.phone,
-        statusCode:      c.status_code,
-        classdef:        c.classdef,
-        censusTypeId:    { censusType: 'C', censusTypeDesc: 'CARRIER' },
-        allowedToOperate: 'Y',
-        // Show first MC docket found across all 3 slots
-        docketNumber:    c.docket1prefix === 'MC' ? c.docket1 :
-                         c.docket2prefix === 'MC' ? c.docket2 :
-                         c.docket3prefix === 'MC' ? c.docket3 : (c.docket1 || ''),
-        totalPowerUnits: c.power_units,
-        totalDrivers:    c.total_drivers,
-      }));
+      const normalized = items.map(c => {
+        // Pick the active MC docket number
+        const mcNum = (c.docket1prefix === 'MC' && c.docket1_status_code === 'A') ? c.docket1 :
+                      (c.docket2prefix === 'MC' && c.docket2_status_code === 'A') ? c.docket2 :
+                      (c.docket3prefix === 'MC' && c.docket3_status_code === 'A') ? c.docket3 : '';
+        return {
+          dotNumber:       c.dot_number,
+          legalName:       c.legal_name,
+          dbaName:         c.dba_name,
+          phyCity:         c.phy_city,
+          phyState:        c.phy_state,
+          phyStreet:       c.phy_street,
+          phyZipcode:      c.phy_zip,
+          telephone:       c.phone,
+          email:           c.email_address,
+          statusCode:      c.status_code,
+          classdef:        c.classdef,
+          censusTypeId:    { censusType: 'C', censusTypeDesc: 'CARRIER' },
+          allowedToOperate: 'Y',
+          docketNumber:    mcNum,
+          docketStatus:    'A', // always active since we filter for it
+          totalPowerUnits: c.power_units,
+          totalDrivers:    c.total_drivers,
+          companyOfficer:  c.company_officer_1,
+          fleetSize:       c.fleetsize,
+          carrierOperation: c.carrier_operation,
+        };
+      });
 
       res.json({ content: normalized, total: normalized.length });
     } catch(e) {
