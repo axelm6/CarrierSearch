@@ -418,11 +418,77 @@ function showPanel(name, btn) {
   if (name === 'map') initMap();
 }
 
-function quickRegion(state, city) {
-  stateSel.value = state;
+const REGIONS = {
+  'IL': ['IL','OH','IN','MI','WI'],        // Midwest
+  'GA': ['GA','FL','SC','NC','TN'],        // Southeast
+  'TX': ['TX','AZ','NM','OK'],             // Southwest
+  'NY': ['NY','NJ','PA','MA','CT'],        // Northeast
+  'CA': ['CA','OR','WA'],                  // West Coast
+};
+
+async function quickRegion(leadState, city) {
+  const states = REGIONS[leadState];
+  if (!states) { // single state fallback
+    stateSel.value = leadState;
+    document.getElementById('inp-city').value = city || '';
+    runSearch();
+    return;
+  }
+  if (searching) return;
+  searching = true;
+
+  const pgSz = parseInt(document.getElementById('page-size').value);
+  allResults = [];
+  const seen = new Set();
+  document.getElementById('search-btn').disabled = true;
+  document.getElementById('all-us-btn').disabled = true;
+  document.getElementById('pag-row').style.display = 'none';
+  document.getElementById('sel-state').value = leadState;
   document.getElementById('inp-city').value = city || '';
-  document.getElementById('nav-search').click();
-  runSearch();
+
+  const regionName = {
+    'IL':'Midwest','GA':'Southeast','TX':'Southwest','NY':'Northeast','CA':'West Coast'
+  }[leadState] || leadState;
+
+  document.getElementById('results-area').innerHTML = `
+    <div class="state-box">
+      <div class="spinner"></div>
+      <div class="st">Searching ${regionName} region…</div>
+      <div class="ss" id="ls" style="font-family:'DM Mono',monospace;font-size:11px;">Querying ${states.join(', ')}…</div>
+    </div>`;
+
+  const pw = document.getElementById('pw');
+  const pb = document.getElementById('pb');
+  pw.style.display = 'block'; pb.style.width = '5%';
+  let done = 0;
+
+  await Promise.all(states.map(async (st) => {
+    try {
+      const r = await fetch(`/api/carriers?state=${st}&limit=500`);
+      const data = await r.json();
+      (data.content || []).forEach(c => {
+        const dot = String(c.dotNumber || '');
+        if (!dot || seen.has(dot)) return;
+        const cd = (c.classdef || '').toUpperCase();
+        if (cd.includes('BROKER') && !cd.includes('CARRIER') && !cd.includes('FOR HIRE')) return;
+        seen.add(dot); allResults.push(c);
+      });
+      updateStateCount(st, (data.content || []).length);
+    } catch(e) {}
+    done++;
+    pb.style.width = Math.round((done/states.length)*100) + '%';
+    const ls = document.getElementById('ls');
+    if (ls) ls.textContent = `${allResults.length} carriers found · ${done}/${states.length} states loaded`;
+  }));
+
+  allResults.sort((a,b) => (a.phyState||'').localeCompare(b.phyState||'') || (a.legalName||'').localeCompare(b.legalName||''));
+  updateStats(allResults);
+  renderPage(0, pgSz);
+  document.getElementById('s-status').textContent = `✓ ${allResults.length} carriers in ${regionName} region`;
+  pw.style.display = 'none';
+  document.getElementById('search-btn').disabled = false;
+  document.getElementById('all-us-btn').disabled = false;
+  searching = false;
 }
 
 async function fetchByState(state, start, size) {
