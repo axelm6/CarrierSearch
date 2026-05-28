@@ -160,6 +160,11 @@
   .toast.show { transform: translateY(0); opacity: 1; }
   .tdot { width: 8px; height: 8px; border-radius: 50%; background: var(--blue); flex-shrink: 0; }
 
+  .region-check { display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--radius);cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);transition:all 0.15s;user-select:none; }
+  .region-check:hover { background:var(--surface2); }
+  .region-check.selected { background:var(--accent-light);color:var(--accent-dark); }
+  .region-check input[type=checkbox] { width:14px;height:14px;cursor:pointer;accent-color:var(--blue);flex-shrink:0; }
+  .region-states { font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-left:auto;font-weight:400; }
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 99px; }
@@ -196,12 +201,15 @@
     </div>
     <div class="s-divider"></div>
     <div class="sidebar-section"><div class="s-label">Quick Regions</div></div>
-    <div class="region-list">
-      <button class="region-btn" onclick="quickRegion('IL','')"><div class="rdot" style="background:#32AAE1"></div>Midwest (IL, OH, IN, MI, WI)</button>
-      <button class="region-btn" onclick="quickRegion('GA','')"><div class="rdot" style="background:#E60080"></div>Southeast (GA, FL, SC, NC, TN)</button>
-      <button class="region-btn" onclick="quickRegion('TX','')"><div class="rdot" style="background:#FAB43C"></div>Southwest (TX, AZ, NM, OK)</button>
-      <button class="region-btn" onclick="quickRegion('NY','')"><div class="rdot" style="background:#786EAF"></div>Northeast (NY, NJ, PA, MA, CT)</button>
-      <button class="region-btn" onclick="quickRegion('CA','')"><div class="rdot" style="background:#C8D23C"></div>West Coast (CA, OR, WA)</button>
+    <div style="padding:0 14px;">
+      <div id="region-list" style="display:flex;flex-direction:column;gap:4px;"></div>
+      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="searchSelectedRegions()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          Search Selected
+        </button>
+        <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:var(--text3);" onclick="clearRegions()">Clear</button>
+      </div>
     </div>
     <div class="sidebar-footer">
       <div class="s-label">Saved carriers</div>
@@ -426,37 +434,72 @@ const REGIONS = {
   'CA': ['CA','OR','WA'],                  // West Coast
 };
 
+const REGIONS = [
+  { id:'midwest',   label:'Midwest',    states:['IL','OH','IN','MI','WI'],      color:'#32AAE1' },
+  { id:'southeast', label:'Southeast',  states:['GA','FL','SC','NC','TN'],      color:'#E60080' },
+  { id:'southwest', label:'Southwest',  states:['TX','AZ','NM','OK'],           color:'#FAB43C' },
+  { id:'northeast', label:'Northeast',  states:['NY','NJ','PA','MA','CT'],      color:'#786EAF' },
+  { id:'westcoast', label:'West Coast', states:['CA','OR','WA'],                color:'#C8D23C' },
+];
+
+// Build region checkboxes on load
+function buildRegionList() {
+  const el = document.getElementById('region-list');
+  if (!el) return;
+  el.innerHTML = REGIONS.map(r => `
+    <label class="region-check" id="rc-${r.id}">
+      <input type="checkbox" id="chk-${r.id}" onchange="toggleRegion('${r.id}', this.checked)">
+      <div style="width:8px;height:8px;border-radius:50%;background:${r.color};flex-shrink:0;"></div>
+      <span>${r.label}</span>
+      <span class="region-states">${r.states.join(', ')}</span>
+    </label>`).join('');
+}
+
+function toggleRegion(id, checked) {
+  const el = document.getElementById('rc-' + id);
+  if (el) el.classList.toggle('selected', checked);
+}
+
+function clearRegions() {
+  REGIONS.forEach(r => {
+    const chk = document.getElementById('chk-' + r.id);
+    const rc  = document.getElementById('rc-'  + r.id);
+    if (chk) chk.checked = false;
+    if (rc)  rc.classList.remove('selected');
+  });
+}
+
+async function searchSelectedRegions() {
+  const selected = REGIONS.filter(r => document.getElementById('chk-' + r.id)?.checked);
+  if (!selected.length) { showToast('Select at least one region'); return; }
+  const allStates = [...new Set(selected.flatMap(r => r.states))];
+  const regionNames = selected.map(r => r.label).join(' + ');
+  await runRegionSearch(allStates, regionNames);
+}
+
 async function quickRegion(leadState, city) {
-  const states = REGIONS[leadState];
-  if (!states) { // single state fallback
-    stateSel.value = leadState;
-    document.getElementById('inp-city').value = city || '';
-    runSearch();
-    return;
-  }
+  // Legacy single-state fallback (map clicks etc)
+  stateSel.value = leadState;
+  document.getElementById('inp-city').value = city || '';
+  runSearch();
+}
+
+async function runRegionSearch(states, regionLabel) {
+
   if (searching) return;
   searching = true;
-
-  const pgSz = parseInt(document.getElementById('page-size').value);
   allResults = [];
   const seen = new Set();
+  const pgSz = parseInt(document.getElementById('page-size').value);
   document.getElementById('search-btn').disabled = true;
   document.getElementById('all-us-btn').disabled = true;
   document.getElementById('pag-row').style.display = 'none';
-  document.getElementById('sel-state').value = leadState;
-  document.getElementById('inp-city').value = city || '';
-
-  const regionName = {
-    'IL':'Midwest','GA':'Southeast','TX':'Southwest','NY':'Northeast','CA':'West Coast'
-  }[leadState] || leadState;
-
   document.getElementById('results-area').innerHTML = `
     <div class="state-box">
       <div class="spinner"></div>
-      <div class="st">Searching ${regionName} region…</div>
+      <div class="st">Searching ${regionLabel}…</div>
       <div class="ss" id="ls" style="font-family:'DM Mono',monospace;font-size:11px;">Querying ${states.join(', ')}…</div>
     </div>`;
-
   const pw = document.getElementById('pw');
   const pb = document.getElementById('pb');
   pw.style.display = 'block'; pb.style.width = '5%';
@@ -478,13 +521,13 @@ async function quickRegion(leadState, city) {
     done++;
     pb.style.width = Math.round((done/states.length)*100) + '%';
     const ls = document.getElementById('ls');
-    if (ls) ls.textContent = `${allResults.length} carriers found · ${done}/${states.length} states loaded`;
+    if (ls) ls.textContent = `${allResults.length} carriers · ${done}/${states.length} states loaded`;
   }));
 
   allResults.sort((a,b) => (a.phyState||'').localeCompare(b.phyState||'') || (a.legalName||'').localeCompare(b.legalName||''));
   updateStats(allResults);
   renderPage(0, pgSz);
-  document.getElementById('s-status').textContent = `✓ ${allResults.length} carriers in ${regionName} region`;
+  document.getElementById('s-status').textContent = `✓ ${allResults.length} carriers in ${regionLabel}`;
   pw.style.display = 'none';
   document.getElementById('search-btn').disabled = false;
   document.getElementById('all-us-btn').disabled = false;
@@ -793,7 +836,7 @@ let tt;
 function showToast(msg){const t=document.getElementById('toast');document.getElementById('tmsg').textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2800);}
 document.getElementById('inp-city').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();});
 // Init inline map on load
-window.addEventListener('load', () => { setTimeout(initInlineMap, 100); });
+window.addEventListener('load', () => { setTimeout(initInlineMap, 100); buildRegionList(); });
 
 async function searchAllUS() {
   if (searching) return;
