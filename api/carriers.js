@@ -19,27 +19,29 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const { state, name } = req.query;
+  const entityType = req.query.entityType || 'carriers';
   const limit  = parseInt(req.query.limit)  || 2000;
   const offset = parseInt(req.query.offset) || 0;
 
   if (state) {
     try {
-      const entityType = req.query.entityType || 'carriers';
-      let whereClause = `phy_state='${state.toUpperCase()}' AND status_code='A'`;
-      
-      // Filter by entity type using classdef field
+      // Base filter: active records in this state
+      let where = `phy_state='${state.toUpperCase()}' AND status_code='A'`;
+
+      // Entity type filter using ent_type field:
+      // C = Carrier, B = Broker, F = Freight Forwarder, S = Shipper
+      // Source: FMCSA MCMIS data dictionary
       if (entityType === 'carriers') {
-        // Exclude pure brokers - carriers have FOR HIRE, PRIVATE PROPERTY, EXEMPT etc
-        whereClause += ` AND classdef NOT LIKE '%BROKER%'`;
+        where += ` AND ent_type='C'`;
       } else if (entityType === 'brokers') {
-        whereClause += ` AND classdef LIKE '%BROKER%'`;
+        where += ` AND (ent_type='B' OR ent_type='F')`;
       }
       // 'all' = no additional filter
 
-      const where = whereClause;
       const url = `https://data.transportation.gov/resource/az4n-8mr2.json?$where=${encodeURIComponent(where)}&$limit=${limit}&$offset=${offset}&$order=legal_name ASC`;
       const data = await fetchJSON(url);
       const items = Array.isArray(data) ? data : [];
+
       const normalized = items.map(c => ({
         dotNumber:       c.dot_number,
         legalName:       c.legal_name,
@@ -50,13 +52,15 @@ module.exports = async (req, res) => {
         phyZipcode:      c.phy_zip,
         telephone:       c.phone,
         statusCode:      c.status_code,
+        entType:         c.ent_type,
         classdef:        c.classdef,
-        censusTypeId:    { censusType: 'C', censusTypeDesc: 'CARRIER' },
+        censusTypeId:    { censusType: c.ent_type, censusTypeDesc: c.ent_type === 'C' ? 'CARRIER' : c.ent_type === 'B' ? 'BROKER' : c.ent_type },
         allowedToOperate: 'Y',
         docketNumber:    c.docket1 || '',
         totalPowerUnits: c.power_units,
         totalDrivers:    c.total_drivers,
       }));
+
       res.json({ content: normalized, total: normalized.length });
     } catch(e) {
       res.status(500).json({ error: e.message });
