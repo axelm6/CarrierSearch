@@ -25,18 +25,19 @@ module.exports = async (req, res) => {
 
   if (state) {
     try {
-      // Base filter: active records in this state
+      // Base: active in state
       let where = `phy_state='${state.toUpperCase()}' AND status_code='A'`;
 
-      // Entity type filter using ent_type field:
-      // C = Carrier, B = Broker, F = Freight Forwarder, S = Shipper
-      // Source: FMCSA MCMIS data dictionary
+      // Filter using classdef field which contains the operating authority description
+      // Values include: "AUTHORIZED FOR HIRE", "PRIVATE PROPERTY", "EXEMPT FOR HIRE",
+      // "BROKER", "FREIGHT FORWARDER" etc.
       if (entityType === 'carriers') {
-        where += ` AND ent_type='C'`;
+        // Keep null/empty classdef AND non-broker values — exclude only explicit brokers/forwarders
+        where += ` AND (classdef IS NULL OR classdef='' OR (classdef NOT LIKE '%BROKER%' AND classdef NOT LIKE '%FORWARDER%'))`;
       } else if (entityType === 'brokers') {
-        where += ` AND (ent_type='B' OR ent_type='F')`;
+        where += ` AND (classdef LIKE '%BROKER%' OR classdef LIKE '%FORWARDER%')`;
       }
-      // 'all' = no additional filter
+      // 'all' = no filter
 
       const url = `https://data.transportation.gov/resource/az4n-8mr2.json?$where=${encodeURIComponent(where)}&$limit=${limit}&$offset=${offset}&$order=legal_name ASC`;
       const data = await fetchJSON(url);
@@ -52,9 +53,8 @@ module.exports = async (req, res) => {
         phyZipcode:      c.phy_zip,
         telephone:       c.phone,
         statusCode:      c.status_code,
-        entType:         c.ent_type,
         classdef:        c.classdef,
-        censusTypeId:    { censusType: c.ent_type, censusTypeDesc: c.ent_type === 'C' ? 'CARRIER' : c.ent_type === 'B' ? 'BROKER' : c.ent_type },
+        censusTypeId:    { censusType: 'C', censusTypeDesc: 'CARRIER' },
         allowedToOperate: 'Y',
         docketNumber:    c.docket1 || '',
         totalPowerUnits: c.power_units,
