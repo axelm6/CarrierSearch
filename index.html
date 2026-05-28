@@ -1142,7 +1142,6 @@ async function renderDetailPanel(c) {
     <div class="qual-card" id="dp-qual-card">
       <div class="qual-title">Carrier Qualification Guidelines</div>
       ${loadingQualRow('Carrier Authority')}
-      ${loadingQualRow('Insurance Coverage')}
       <div id="dp-qual-verdict" class="qual-verdict qual-verdict-unk" style="margin-top:10px;">Checking…</div>
       <a href="${safer411}" target="_blank" class="btn-freightguard">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -1201,7 +1200,7 @@ async function renderDetailPanel(c) {
   const insReq  = (auth.insuranceRequired || '').toUpperCase();
   const oos     = auth.outOfServiceDate || '';
 
-  // ── 1. CARRIER AUTHORITY ─────────────────────────────────────────
+  // ── CARRIER AUTHORITY ─────────────────────────────────────────
   let authStatus, authLabel;
   if (ca === 'A' || ct === 'A') {
     authStatus = 'good'; authLabel = 'Carrier Authority (Active)';
@@ -1214,39 +1213,13 @@ async function renderDetailPanel(c) {
     authLabel  = ca === 'I' || ct === 'I' ? 'Carrier Authority (Inactive)' : 'Carrier Authority (None)';
   }
 
-  // ── 2. INSURANCE COVERAGE ────────────────────────────────────────
-  // Unverified = bad, matching Carrier411 behaviour
-  let insStatus, insLabel;
-  if (oos) {
-    insStatus = 'bad'; insLabel = 'Insurance Coverage (Out of Service)';
-  } else if (insFile === 'Y') {
-    insStatus = 'good'; insLabel = 'Insurance Coverage (On File)';
-  } else {
-    insStatus = 'bad';
-    insLabel  = insFile === 'N' ? 'Insurance Coverage (Not on File)' : 'Insurance Coverage (Unverified)';
-  }
-
-  // ── Overall verdict ──────────────────────────────────────────────
-  const allGood = authStatus === 'good' && insStatus === 'good';
-  const anyBad  = authStatus === 'bad'  || insStatus === 'bad';
-  let verdict, verdictCls;
-  if (allGood) {
-    verdict = '✅  POLICY: ACCEPTABLE'; verdictCls = 'qual-verdict-pass';
-  } else if (anyBad) {
-    verdict = '❌  POLICY: NOT ACCEPTABLE'; verdictCls = 'qual-verdict-fail';
-  } else {
-    verdict = '⚠️  POLICY: REVIEW REQUIRED'; verdictCls = 'qual-verdict-warn';
-  }
-
   // ── Re-render scorecard ──────────────────────────────────────────
   const card = document.getElementById('dp-qual-card');
   if (!card) return;
   card.innerHTML = `
     <div class="qual-title">Carrier Qualification Guidelines</div>
     ${qualRow(authLabel, authStatus)}
-    ${qualRow(insLabel,  insStatus)}
-    <div class="qual-verdict ${verdictCls}" style="margin-top:10px;">${verdict}</div>
-    <a href="${safer411}" target="_blank" class="btn-freightguard">
+    <a href="${safer411}" target="_blank" class="btn-freightguard" style="margin-top:12px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
       Open in Carrier411 → (login required)
     </a>`;
