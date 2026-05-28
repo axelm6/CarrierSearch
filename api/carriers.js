@@ -24,7 +24,19 @@ module.exports = async (req, res) => {
 
   if (state) {
     try {
-      const where = `phy_state='${state.toUpperCase()}' AND status_code='A'`;
+      const entityType = req.query.entityType || 'carriers';
+      let whereClause = `phy_state='${state.toUpperCase()}' AND status_code='A'`;
+      
+      // Filter by entity type using classdef field
+      if (entityType === 'carriers') {
+        // Exclude pure brokers - carriers have FOR HIRE, PRIVATE PROPERTY, EXEMPT etc
+        whereClause += ` AND classdef NOT LIKE '%BROKER%'`;
+      } else if (entityType === 'brokers') {
+        whereClause += ` AND classdef LIKE '%BROKER%'`;
+      }
+      // 'all' = no additional filter
+
+      const where = whereClause;
       const url = `https://data.transportation.gov/resource/az4n-8mr2.json?$where=${encodeURIComponent(where)}&$limit=${limit}&$offset=${offset}&$order=legal_name ASC`;
       const data = await fetchJSON(url);
       const items = Array.isArray(data) ? data : [];
