@@ -1062,15 +1062,15 @@ async function renderDetailPanel(c) {
       ${loadingQualRow('Insurance Coverage')}
       <div id="dp-qual-verdict" class="qual-verdict qual-verdict-unk" style="margin-top:10px;">Checking…</div>
       <a href="${safer411}" target="_blank" class="btn-freightguard">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        Check FreightGuard on Carrier411
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Open in Carrier411 → (login required)
       </a>
     </div>
 
     <div class="detail-section">
       <div class="detail-section-title">Identity</div>
       <div class="detail-row"><span class="detail-label">USDOT #</span><span class="detail-value blue">${dot}</span></div>
-      <div class="detail-row"><span class="detail-label">MC #</span><span class="detail-value">${mc}</span></div>
+      <div class="detail-row"><span class="detail-label">MC #</span><span class="detail-value">${mc !== '—' ? `<a href="https://www.carrier411.com/carrier-search/?docket=${c.docketNumber}" target="_blank" style="color:var(--blue);text-decoration:none;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;" title="Open in Carrier411 (login required)">${mc} ↗</a>` : '—'}</span></div>
       <div class="detail-row"><span class="detail-label">Operation Type</span><span class="detail-value">${classdef}</span></div>
       ${officer ? `<div class="detail-row"><span class="detail-label">Officer</span><span class="detail-value">${h(officer)}</span></div>` : ''}
     </div>
@@ -1183,8 +1183,8 @@ async function renderDetailPanel(c) {
     ${qualRow(insLabel, insStatus)}
     <div class="qual-verdict ${verdictCls}" style="margin-top:10px;">${verdict}</div>
     <a href="${safer411}" target="_blank" class="btn-freightguard">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      Check FreightGuard on Carrier411
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      Open in Carrier411 → (login required)
     </a>`;
 }
 
