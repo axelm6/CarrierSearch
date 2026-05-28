@@ -45,6 +45,12 @@ module.exports = async (req, res) => {
         const mcNum = (c.docket1prefix === 'MC' && c.docket1_status_code === 'A') ? c.docket1 :
                       (c.docket2prefix === 'MC' && c.docket2_status_code === 'A') ? c.docket2 :
                       (c.docket3prefix === 'MC' && c.docket3_status_code === 'A') ? c.docket3 : '';
+
+        // Find the actual status of whichever MC docket slot exists (active or not)
+        const mcStatus = (c.docket1prefix === 'MC') ? c.docket1_status_code :
+                         (c.docket2prefix === 'MC') ? c.docket2_status_code :
+                         (c.docket3prefix === 'MC') ? c.docket3_status_code : '';
+
         return {
           dotNumber:       c.dot_number,
           legalName:       c.legal_name,
@@ -60,7 +66,8 @@ module.exports = async (req, res) => {
           censusTypeId:    { censusType: 'C', censusTypeDesc: 'CARRIER' },
           allowedToOperate: 'Y',
           docketNumber:    mcNum,
-          docketStatus:    'A', // always active since we filter for it
+          mcAuthorityStatus: mcStatus,   // A=Active, I=Inactive, N=Not granted, ''=unknown
+          docketStatus:    'A',
           totalPowerUnits: c.power_units,
           totalDrivers:    c.total_drivers,
           companyOfficer:  c.company_officer_1,
