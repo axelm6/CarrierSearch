@@ -29,11 +29,12 @@ module.exports = async (req, res) => {
 
       if (entityType === 'carriers') {
         where += ` AND (classdef IS NULL OR classdef='' OR (classdef NOT LIKE '%BROKER%' AND classdef NOT LIKE '%FORWARDER%'))`;
-        // Must have MC authority in one of the 3 docket slots AND that slot must be active
-        where += ` AND ((docket1prefix='MC' AND docket1_status_code='A') OR (docket2prefix='MC' AND docket2_status_code='A') OR (docket3prefix='MC' AND docket3_status_code='A'))`;
+        // Has an MC docket in any status (A=Active, I=Inactive, N=Not granted)
+        // We pass mcAuthorityStatus to the frontend so it can filter
+        where += ` AND (docket1prefix='MC' OR docket2prefix='MC' OR docket3prefix='MC')`;
       } else if (entityType === 'brokers') {
         where += ` AND (classdef LIKE '%BROKER%' OR classdef LIKE '%FORWARDER%')`;
-        where += ` AND ((docket1prefix='MC' AND docket1_status_code='A') OR (docket2prefix='MC' AND docket2_status_code='A') OR (docket3prefix='MC' AND docket3_status_code='A') OR (docket1prefix='FF' AND docket1_status_code='A'))`;
+        where += ` AND ((docket1prefix='MC') OR (docket2prefix='MC') OR (docket3prefix='MC') OR (docket1prefix='FF'))`;
       }
 
       const url = `https://data.transportation.gov/resource/az4n-8mr2.json?$where=${encodeURIComponent(where)}&$limit=${limit}&$offset=${offset}&$order=legal_name ASC`;
@@ -41,12 +42,15 @@ module.exports = async (req, res) => {
       const items = Array.isArray(data) ? data : [];
 
       const normalized = items.map(c => {
-        // Pick the active MC docket number
+        // Pick the active MC docket number first, fall back to any MC docket
         const mcNum = (c.docket1prefix === 'MC' && c.docket1_status_code === 'A') ? c.docket1 :
                       (c.docket2prefix === 'MC' && c.docket2_status_code === 'A') ? c.docket2 :
-                      (c.docket3prefix === 'MC' && c.docket3_status_code === 'A') ? c.docket3 : '';
+                      (c.docket3prefix === 'MC' && c.docket3_status_code === 'A') ? c.docket3 :
+                      (c.docket1prefix === 'MC') ? c.docket1 :
+                      (c.docket2prefix === 'MC') ? c.docket2 :
+                      (c.docket3prefix === 'MC') ? c.docket3 : '';
 
-        // Find the actual status of whichever MC docket slot exists (active or not)
+        // The status of that MC docket slot (A=Active, I=Inactive, N=Not granted)
         const mcStatus = (c.docket1prefix === 'MC') ? c.docket1_status_code :
                          (c.docket2prefix === 'MC') ? c.docket2_status_code :
                          (c.docket3prefix === 'MC') ? c.docket3_status_code : '';
