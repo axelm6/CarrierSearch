@@ -450,13 +450,11 @@ async function runSearch() {
     if (!dot || seen.has(dot)) return false;
     if ((c.phyState || '').toUpperCase() !== state.toUpperCase()) return false;
     if (city && !(c.phyCity || '').toLowerCase().includes(city)) return false;
-    // No pure brokers
-    const censusDesc = (c.censusTypeId && c.censusTypeId.censusTypeDesc) || '';
-    if (censusDesc.toUpperCase() === 'BROKER') return false;
-    const bAuth = (c.brokerAuthorityStatus || '').toUpperCase();
-    const cAuth = (c.commonAuthorityStatus || '').toUpperCase();
-    const ctAuth = (c.contractAuthorityStatus || '').toUpperCase();
-    if (bAuth === 'A' && cAuth !== 'A' && ctAuth !== 'A') return false;
+    // CONDITION 1: USDOT Status must be ACTIVE (statusCode = 'A')
+    if (c.statusCode !== 'A') return false;
+    // CONDITION 2: Entity Type must be CARRIER (censusType = 'C')
+    const censusType = (c.censusTypeId && c.censusTypeId.censusType) || '';
+    if (censusType !== 'C') return false;
     seen.add(dot);
     return true;
   }
@@ -626,9 +624,11 @@ function updateStats(c) {
 }
 
 function bdg(code, allowed, statusCode) {
-  if (allowed==='Y' || code==='A' || statusCode==='A') return {cls:'active',  lbl:'Active'};
-  if (code==='I' || statusCode==='I')                  return {cls:'inactive',lbl:'Inactive'};
-  if (code==='P')                                       return {cls:'pending', lbl:'Pending'};
+  // statusCode is the most reliable: A=Active, I=Inactive
+  if (statusCode==='A') return {cls:'active',  lbl:'Active'};
+  if (statusCode==='I') return {cls:'inactive',lbl:'Inactive'};
+  if (allowed==='Y')    return {cls:'active',  lbl:'Active'};
+  if (code==='A')       return {cls:'active',  lbl:'Active'};
   return {cls:'pending',lbl:'Unknown'};
 }
 function fmt(p) {
@@ -766,12 +766,11 @@ async function searchAllUS() {
         (data.content || []).forEach(c => {
           const dot = String(c.dotNumber || c.dot || '');
           if (!dot || seen.has(dot)) return;
-          const censusDesc = (c.censusTypeId && c.censusTypeId.censusTypeDesc) || '';
-          if (censusDesc.toUpperCase() === 'BROKER') return;
-          const bAuth = (c.brokerAuthorityStatus||'').toUpperCase();
-          const cAuth = (c.commonAuthorityStatus||'').toUpperCase();
-          const ctAuth = (c.contractAuthorityStatus||'').toUpperCase();
-          if (bAuth === 'A' && cAuth !== 'A' && ctAuth !== 'A') return;
+          // CONDITION 1: USDOT Status must be ACTIVE
+          if (c.statusCode !== 'A') return;
+          // CONDITION 2: Entity Type must be CARRIER
+          const censusType = (c.censusTypeId && c.censusTypeId.censusType) || '';
+          if (censusType !== 'C') return;
           seen.add(dot); allResults.push(c);
         });
         completed++;
