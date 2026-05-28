@@ -365,7 +365,17 @@ const KEYWORDS = [
   'eastern','pacific','atlantic','global','international',
   'general','premier','eagle','star','alliance',
   'first','best','fast','direct','plus',
-  'brothers','family','valley','coast','central'
+  'brothers','family','valley','coast','central',
+  'truck','cargo','load','haul','drive',
+  'highway','road','route','mile','cross',
+  'heavy','flatbed','refrigerated','tanker','bulk',
+  'auto','vehicle','equipment','supply','trade',
+  'king','royal','swift','ace','pro',
+  'reliable','quality','superior','elite','apex',
+  'enterprise','ventures','partners','associates','company',
+  'midwest','southeast','southwest','northeast','northwest',
+  'texas','california','florida','georgia','ohio',
+  'chicago','houston','atlanta','dallas','miami'
 ];
 
 const STATES = [
@@ -460,7 +470,7 @@ async function runSearch() {
   }
 
   // Fire all keyword searches in parallel, collect results
-  const pages = kws.flatMap(kw => [0, 100].map(start => ({kw, start})));
+  const pages = kws.flatMap(kw => [0, 100, 200].map(start => ({kw, start})));
   let done = 0;
   await Promise.all(pages.map(({kw, start}) =>
     fetch(`/api/carriers?name=${encodeURIComponent(kw)}&size=100&start=${start}`)
@@ -758,7 +768,7 @@ async function searchAllUS() {
   const pb = document.getElementById('pb');
   pw.style.display = 'block'; pb.style.width = '5%';
   let completed = 0;
-  const allPages = KEYWORDS.flatMap(kw => [0, 100].map(start => ({kw, start})));
+  const allPages = KEYWORDS.flatMap(kw => [0, 100, 200].map(start => ({kw, start})));
   await Promise.all(allPages.map(({kw, start}) =>
     fetch('/api/carriers?name=' + encodeURIComponent(kw) + '&size=100&start=' + start)
       .then(r => r.json())
