@@ -1244,21 +1244,21 @@ async function renderDetailPanel(c) {
 
   // ── Update the table row with live QCMobile authority status ─────
   // This overwrites the stale census badge with the verified live result
-  const mc = c.docketNumber || '';
+  const mcNum = c.docketNumber || '';
   let liveBadge;
   if (authStatus === 'good') {
     liveBadge = `<div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);">MC-${mc}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);">MC-${mcNum}</span>
       <span class="badge badge-active" style="width:fit-content;">Active ✓</span>
     </div>`;
   } else if (authStatus === 'warn') {
     liveBadge = `<div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--amber);">MC-${mc}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--amber);">MC-${mcNum}</span>
       <span class="badge badge-pending" style="width:fit-content;">Pending</span>
     </div>`;
   } else {
     liveBadge = `<div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--red);">MC-${mc}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--red);">MC-${mcNum}</span>
       <span class="badge badge-inactive" style="width:fit-content;">Inactive ✗</span>
     </div>`;
   }
