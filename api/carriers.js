@@ -25,17 +25,15 @@ module.exports = async (req, res) => {
 
   if (state) {
     try {
-      // Base: active in state
       let where = `phy_state='${state.toUpperCase()}' AND status_code='A'`;
 
-      // Filter using classdef field which contains the operating authority description
-      // Values include: "AUTHORIZED FOR HIRE", "PRIVATE PROPERTY", "EXEMPT FOR HIRE",
-      // "BROKER", "FREIGHT FORWARDER" etc.
       if (entityType === 'carriers') {
-        // Keep null/empty classdef AND non-broker values — exclude only explicit brokers/forwarders
+        // Must have MC authority — check all 3 docket prefix slots
         where += ` AND (classdef IS NULL OR classdef='' OR (classdef NOT LIKE '%BROKER%' AND classdef NOT LIKE '%FORWARDER%'))`;
+        where += ` AND (docket1prefix='MC' OR docket2prefix='MC' OR docket3prefix='MC')`;
       } else if (entityType === 'brokers') {
         where += ` AND (classdef LIKE '%BROKER%' OR classdef LIKE '%FORWARDER%')`;
+        where += ` AND (docket1prefix='MC' OR docket2prefix='MC' OR docket3prefix='MC' OR docket1prefix='FF' OR docket2prefix='FF')`;
       }
       // 'all' = no filter
 
@@ -56,7 +54,10 @@ module.exports = async (req, res) => {
         classdef:        c.classdef,
         censusTypeId:    { censusType: 'C', censusTypeDesc: 'CARRIER' },
         allowedToOperate: 'Y',
-        docketNumber:    c.docket1 || '',
+        // Show first MC docket found across all 3 slots
+        docketNumber:    c.docket1prefix === 'MC' ? c.docket1 :
+                         c.docket2prefix === 'MC' ? c.docket2 :
+                         c.docket3prefix === 'MC' ? c.docket3 : (c.docket1 || ''),
         totalPowerUnits: c.power_units,
         totalDrivers:    c.total_drivers,
       }));
