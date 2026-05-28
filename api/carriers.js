@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const { state, name } = req.query;
-  const limit  = parseInt(req.query.limit)  || 1000;
+  const limit  = parseInt(req.query.limit)  || 2000;
   const offset = parseInt(req.query.offset) || 0;
 
   if (state) {
