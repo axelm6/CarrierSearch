@@ -435,7 +435,7 @@ async function fetchByState(state, start, size) {
   return { content: items.map(x => (x && x.carrier) ? x.carrier : x), total: data.total || items.length };
 }
 
-async function runSearch() {
+async function runSearch(offsetStart) {
   const state = stateSel.value;
   if (!state) { showToast('Please select a state first'); return; }
   if (searching) return;
@@ -444,123 +444,94 @@ async function runSearch() {
   const city   = document.getElementById('inp-city').value.trim().toLowerCase();
   const nameKw = document.getElementById('name-kw').value.trim().toLowerCase();
   const pgSz   = parseInt(document.getElementById('page-size').value);
+  offsetStart  = offsetStart || 0;
 
-  allResults = [];
-  const seen = new Set();
+  if (offsetStart === 0) allResults = [];
+  const seen = new Set(allResults.map(c => String(c.dotNumber)));
+
   document.getElementById('search-btn').disabled = true;
   document.getElementById('pag-row').style.display = 'none';
-  document.getElementById('results-area').innerHTML = `
-    <div class="state-box">
-      <div class="spinner"></div>
-      <div class="st">Searching carriers in ${state}…</div>
-      <div class="ss" style="font-family:'DM Mono',monospace;font-size:11px;">Querying FMCSA — results appear shortly</div>
-    </div>`;
+
+  if (offsetStart === 0) {
+    document.getElementById('results-area').innerHTML = `
+      <div class="state-box">
+        <div class="spinner"></div>
+        <div class="st">Searching carriers in ${state}…</div>
+        <div class="ss" style="font-family:'DM Mono',monospace;font-size:11px;">Querying full FMCSA database — 4.4M carriers</div>
+      </div>`;
+  }
 
   const pw = document.getElementById('pw');
   const pb = document.getElementById('pb');
-  pw.style.display = 'block'; pb.style.width = '10%';
+  pw.style.display = 'block'; pb.style.width = '30%';
 
-  const kws = nameKw ? [nameKw] : KEYWORDS;
+  try {
+    let url;
+    if (nameKw) {
+      // Keyword search fallback
+      url = `/api/carriers?name=${encodeURIComponent(nameKw)}&limit=1000&offset=${offsetStart}`;
+    } else {
+      // Direct state query — fast, accurate, full database
+      url = `/api/carriers?state=${encodeURIComponent(state)}&limit=1000&offset=${offsetStart}`;
+    }
 
-  function isCarrier(c) {
-    const dot = String(c.dotNumber || c.dot || '');
-    if (!dot || seen.has(dot)) return false;
-    if ((c.phyState || '').toUpperCase() !== state.toUpperCase()) return false;
-    if (city && !(c.phyCity || '').toLowerCase().includes(city)) return false;
-    // CONDITION 1: USDOT Status must be ACTIVE (statusCode = 'A')
-    if (c.statusCode !== 'A') return false;
-    // CONDITION 2: Entity Type must be CARRIER (censusType = 'C')
-    const censusType = (c.censusTypeId && c.censusTypeId.censusType) || '';
-    if (censusType !== 'C') return false;
-    seen.add(dot);
-    return true;
-  }
+    const r = await fetch(url);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
 
-  // Fire all keyword searches in parallel, collect results
-  const pages = kws.flatMap(kw => [0, 100, 200].map(start => ({kw, start})));
-  let done = 0;
-  await Promise.all(pages.map(({kw, start}) =>
-    fetch(`/api/carriers?name=${encodeURIComponent(kw)}&size=100&start=${start}`)
-      .then(r => r.json())
-      .then(data => {
-        (data.content || []).forEach(c => { if (isCarrier(c)) allResults.push(c); });
-        done++;
-        pb.style.width = Math.min(Math.round((done/pages.length)*100), 95) + '%';
-      })
-      .catch(() => { done++; })
-  ));
+    const items = data.content || [];
 
-  // All done — render
-  pb.style.width = '100%';
-  updateStats(allResults);
-  
-  const area = document.getElementById('results-area');
-  
-  if (allResults.length === 0) {
-    area.innerHTML = `<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div><div class="st">No carriers found in ${state}</div><div class="ss">Try switching to "All statuses" or a different state.</div></div>`;
-  } else {
-    const pgSzVal = parseInt(document.getElementById('page-size').value);
-    const saved = new Set(outreachList.map(c => c.dot));
-    const slice = allResults.slice(0, pgSzVal);
-    const rows = slice.map(c => {
-      const dot = String(c.dotNumber || c.dot || '');
-      const name = c.legalName || c.dbaName || '—';
-      const pCity = c.phyCity || '';
-      const pSt = c.phyState || '';
-      const phone = fmt(c.telephone || c.phone || '');
-      const mc = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
-      const { cls, lbl } = bdg(c.commonAuthorityStatus, c.allowedToOperate, c.statusCode);
-      const isSaved = saved.has(dot);
-      const safer = `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${dot}`;
-      return `<tr>
-        <td style="width:90px;"><a class="dot-link" href="${safer}" target="_blank">${dot}</a></td>
-        <td style="width:auto;font-weight:700;">${h(name)}</td>
-        <td style="width:150px;" class="td-sm">${h(pCity)}${pCity?', ':''}${pSt}</td>
-        <td style="width:130px;" class="td-mono td-sm">${phone||'—'}</td>
-        <td style="width:90px;" class="td-mono td-sm">${mc ? 'MC-'+mc : '—'}</td>
-        <td style="width:90px;"><span class="badge badge-${cls}">${lbl}</span></td>
-        <td style="width:76px;text-align:right;"><button class="add-btn ${isSaved?'added':''}" id="btn-${dot}" onclick="addToOutreach(this)" data-dot="${dot}" data-name="${h(name)}" data-city="${h(pCity)}" data-state="${pSt}" data-phone="${phone}">${isSaved?'✓ Saved':'+ Add'}</button></td>
-      </tr>`;
-    }).join('');
-    area.innerHTML = `
-      <div class="results-hdr">
-        <div class="results-count">Showing <strong>${slice.length}</strong> of <strong>${allResults.length}</strong> carriers in <strong>${state}</strong></div>
-        <button class="btn btn-ghost" style="font-size:12px;padding:5px 12px;" onclick="exportResults()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export ${allResults.length}
-        </button>
-      </div>
-      <div class="table-wrap"><table>
-        <thead><tr><th>DOT #</th><th>Legal name</th><th>Location</th><th>Phone</th><th>MC #</th><th>Authority</th><th></th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>`;
-    
-    // Pagination if needed
-    if (allResults.length > pgSzVal) {
+    for (const c of items) {
+      const dot = String(c.dotNumber || '');
+      if (!dot || seen.has(dot)) continue;
+      // City filter
+      if (city && !(c.phyCity || '').toLowerCase().includes(city)) continue;
+      seen.add(dot);
+      allResults.push(c);
+    }
+
+    pb.style.width = '100%';
+    updateStats(allResults);
+
+    const area = document.getElementById('results-area');
+    if (!allResults.length) {
+      area.innerHTML = `<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div><div class="st">No carriers found in ${state}</div><div class="ss">Try clearing the city filter or checking a different state.</div></div>`;
+    } else {
+      renderPage(0, pgSz);
+    }
+
+    const hasMore = items.length === 1000;
+    document.getElementById('s-status').textContent = `✓ ${allResults.length} carriers in ${state}${hasMore ? ' · more available' : ''}`;
+
+    // Load more button if there are more results
+    if (hasMore) {
       const pRow = document.getElementById('pag-row');
       pRow.style.display = 'flex';
-      let btns = '';
-      const totalPages = Math.ceil(allResults.length / pgSzVal);
-      for (let i = 0; i < totalPages; i++) {
-        btns += `<button class="pb ${i===0?'cur':''}" onclick="renderPage(${i},${pgSzVal})" ${i===0?'disabled':''}>${i+1}</button>`;
-      }
-      pRow.innerHTML = btns;
+      const existingPag = allResults.length > pgSz ? `<span class="pi" style="margin-right:8px;">${allResults.length} loaded</span>` : '';
+      // Add load more to existing pagination
+      setTimeout(() => {
+        const pRow2 = document.getElementById('pag-row');
+        if (pRow2) {
+          pRow2.innerHTML += `<button class="btn btn-ghost" style="font-size:12px;" onclick="loadMore(${offsetStart + 1000})">Load next 1,000 →</button>`;
+        }
+      }, 50);
     }
+
+    // Update map
+    updateStateCount(state, allResults.length);
+
+  } catch(e) {
+    document.getElementById('results-area').innerHTML = `<div class="state-box"><div class="st">Error loading carriers</div><div class="ss">${e.message}</div></div>`;
   }
-  
-  document.getElementById('s-status').textContent =
-    allResults.length ? `✓ ${allResults.length} carriers in ${state}` : '';
-  // Update map color for this state
-  updateStateCount(state, allResults.length);
+
   pw.style.display = 'none';
   document.getElementById('search-btn').disabled = false;
   searching = false;
 }
 
-function loadMore(start) {
-  runSearch(start);
+function loadMore(offset) {
+  runSearch(offset);
 }
-
-
 
 function renderPage(page, pgSz) {
   const slice = allResults.slice(page * pgSz, (page + 1) * pgSz);
