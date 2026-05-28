@@ -682,11 +682,17 @@ function getFilteredResults() {
   if (qcFilter === 'all') return allResults;
   return allResults.filter(c => {
 
-    // No phone on file — useful proxy: carriers with no phone tend to
-    // have stale/incomplete registrations worth double-checking in Carrier411
-    if (qcFilter === 'no-phone') {
-      const phone = (c.telephone || c.phone || '').replace(/\D/g, '');
-      return phone.length < 7;
+    // MC authority NOT active — census docket status is not 'A'
+    // This is the same data Carrier411 uses for its authority check
+    if (qcFilter === 'mc-not-active') {
+      const s = (c.mcAuthorityStatus || '').toUpperCase();
+      return s !== 'A';
+    }
+
+    // MC authority confirmed active
+    if (qcFilter === 'mc-active') {
+      const s = (c.mcAuthorityStatus || '').toUpperCase();
+      return s === 'A';
     }
 
     return true;
@@ -695,14 +701,15 @@ function getFilteredResults() {
 
 function qcFilterBar() {
   const opts = [
-    { val: 'all',      label: 'All carriers' },
-    { val: 'no-phone', label: '⚠️ No phone on file' },
+    { val: 'all',          label: 'All carriers' },
+    { val: 'mc-active',    label: '✅ MC Authority — Active' },
+    { val: 'mc-not-active',label: '❌ MC Authority — Not Active' },
   ];
   const active = qcFilter !== 'all';
   return `<div style="display:flex;align-items:center;gap:6px;">
-    <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:0.08em;white-space:nowrap;">QC FILTER</span>
-    <div class="sel-wrap" style="min-width:190px;">
-      <select onchange="applyQcFilter(this.value)" style="background:var(--surface2);border:1px solid ${active?'var(--amber)':'var(--border)'};color:${active?'var(--amber)':'var(--text)'};border-radius:var(--radius);padding:6px 28px 6px 10px;font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;appearance:none;outline:none;width:100%;cursor:pointer;">
+    <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:0.08em;white-space:nowrap;">MC AUTHORITY</span>
+    <div class="sel-wrap" style="min-width:210px;">
+      <select onchange="applyQcFilter(this.value)" style="background:var(--surface2);border:1px solid ${active?'var(--pink)':'var(--border)'};color:${active?'var(--pink)':'var(--text)'};border-radius:var(--radius);padding:6px 28px 6px 10px;font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;appearance:none;outline:none;width:100%;cursor:pointer;">
         ${opts.map(o => `<option value="${o.val}" ${qcFilter===o.val?'selected':''}>${o.label}</option>`).join('')}
       </select>
     </div>
