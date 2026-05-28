@@ -426,64 +426,6 @@ function showPanel(name, btn) {
   if (name === 'map') initMap();
 }
 
-const REGIONS = {
-  'IL': ['IL','OH','IN','MI','WI'],        // Midwest
-  'GA': ['GA','FL','SC','NC','TN'],        // Southeast
-  'TX': ['TX','AZ','NM','OK'],             // Southwest
-  'NY': ['NY','NJ','PA','MA','CT'],        // Northeast
-  'CA': ['CA','OR','WA'],                  // West Coast
-};
-
-const REGIONS = [
-  { id:'midwest',   label:'Midwest',    states:['IL','OH','IN','MI','WI'],      color:'#32AAE1' },
-  { id:'southeast', label:'Southeast',  states:['GA','FL','SC','NC','TN'],      color:'#E60080' },
-  { id:'southwest', label:'Southwest',  states:['TX','AZ','NM','OK'],           color:'#FAB43C' },
-  { id:'northeast', label:'Northeast',  states:['NY','NJ','PA','MA','CT'],      color:'#786EAF' },
-  { id:'westcoast', label:'West Coast', states:['CA','OR','WA'],                color:'#C8D23C' },
-];
-
-// Build region checkboxes on load
-function buildRegionList() {
-  const el = document.getElementById('region-list');
-  if (!el) return;
-  el.innerHTML = REGIONS.map(r => `
-    <label class="region-check" id="rc-${r.id}">
-      <input type="checkbox" id="chk-${r.id}" onchange="toggleRegion('${r.id}', this.checked)">
-      <div style="width:8px;height:8px;border-radius:50%;background:${r.color};flex-shrink:0;"></div>
-      <span>${r.label}</span>
-      <span class="region-states">${r.states.join(', ')}</span>
-    </label>`).join('');
-}
-
-function toggleRegion(id, checked) {
-  const el = document.getElementById('rc-' + id);
-  if (el) el.classList.toggle('selected', checked);
-}
-
-function clearRegions() {
-  REGIONS.forEach(r => {
-    const chk = document.getElementById('chk-' + r.id);
-    const rc  = document.getElementById('rc-'  + r.id);
-    if (chk) chk.checked = false;
-    if (rc)  rc.classList.remove('selected');
-  });
-}
-
-async function searchSelectedRegions() {
-  const selected = REGIONS.filter(r => document.getElementById('chk-' + r.id)?.checked);
-  if (!selected.length) { showToast('Select at least one region'); return; }
-  const allStates = [...new Set(selected.flatMap(r => r.states))];
-  const regionNames = selected.map(r => r.label).join(' + ');
-  await runRegionSearch(allStates, regionNames);
-}
-
-async function quickRegion(leadState, city) {
-  // Legacy single-state fallback (map clicks etc)
-  stateSel.value = leadState;
-  document.getElementById('inp-city').value = city || '';
-  runSearch();
-}
-
 async function runRegionSearch(states, regionLabel) {
 
   if (searching) return;
@@ -836,6 +778,54 @@ let tt;
 function showToast(msg){const t=document.getElementById('toast');document.getElementById('tmsg').textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2800);}
 document.getElementById('inp-city').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();});
 // Init inline map on load
+const REGIONS = [
+  { id:'midwest',   label:'Midwest',    states:['IL','OH','IN','MI','WI'],   color:'#32AAE1' },
+  { id:'southeast', label:'Southeast',  states:['GA','FL','SC','NC','TN'],   color:'#E60080' },
+  { id:'southwest', label:'Southwest',  states:['TX','AZ','NM','OK'],        color:'#FAB43C' },
+  { id:'northeast', label:'Northeast',  states:['NY','NJ','PA','MA','CT'],   color:'#786EAF' },
+  { id:'westcoast', label:'West Coast', states:['CA','OR','WA'],             color:'#C8D23C' },
+];
+
+function buildRegionList() {
+  const el = document.getElementById('region-list');
+  if (!el) return;
+  el.innerHTML = REGIONS.map(r => `
+    <label class="region-check" id="rc-${r.id}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);">
+      <input type="checkbox" id="chk-${r.id}" style="width:14px;height:14px;cursor:pointer;accent-color:#32AAE1;flex-shrink:0;">
+      <div style="width:8px;height:8px;border-radius:50%;background:${r.color};flex-shrink:0;"></div>
+      <span>${r.label}</span>
+      <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-left:auto;">${r.states.join(', ')}</span>
+    </label>`).join('');
+}
+
+function toggleRegion(id, checked) {
+  const el = document.getElementById('rc-' + id);
+  if (el) el.style.background = checked ? 'rgba(50,170,225,0.10)' : '';
+}
+
+function clearRegions() {
+  REGIONS.forEach(r => {
+    const chk = document.getElementById('chk-' + r.id);
+    const rc  = document.getElementById('rc-'  + r.id);
+    if (chk) chk.checked = false;
+    if (rc)  rc.style.background = '';
+  });
+}
+
+async function searchSelectedRegions() {
+  const selected = REGIONS.filter(r => document.getElementById('chk-' + r.id)?.checked);
+  if (!selected.length) { showToast('Select at least one region first'); return; }
+  const allStates = [...new Set(selected.flatMap(r => r.states))];
+  const regionNames = selected.map(r => r.label).join(' + ');
+  await runRegionSearch(allStates, regionNames);
+}
+
+function quickRegion(leadState, city) {
+  stateSel.value = leadState;
+  document.getElementById('inp-city').value = city || '';
+  runSearch();
+}
+
 window.addEventListener('load', () => { setTimeout(initInlineMap, 100); buildRegionList(); });
 
 async function searchAllUS() {
