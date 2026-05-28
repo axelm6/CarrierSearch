@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>CarrierNet — Ligentia Carrier Prospecting</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   :root {
@@ -161,6 +163,12 @@
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 99px; }
+  #us-map { width: 100%; height: 540px; border-radius: var(--radius-lg); overflow: hidden; }
+  .leaflet-tooltip.state-label {
+    background: transparent; border: none; box-shadow: none;
+    font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 700; color: #2c3e50;
+    padding: 0; pointer-events: none;
+  }
 </style>
 </head>
 <body>
@@ -302,8 +310,7 @@
         <div class="search-panel" style="padding:20px 24px;">
           <div class="panel-label">Click any state to search carriers · hover to see details</div>
           <div id="map-container" style="position:relative; width:100%; user-select:none;">
-            <svg id="us-map" viewBox="0 0 960 600" style="width:100%;height:auto;cursor:pointer;" xmlns="http://www.w3.org/2000/svg"></svg>
-            <div id="map-tooltip" style="position:fixed;background:#1a1c1e;color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;font-family:'DM Mono',monospace;pointer-events:none;display:none;z-index:100;box-shadow:0 4px 16px rgba(0,0,0,0.3);"></div>
+            <div id="us-map"></div>
           </div>
           <div style="display:flex;gap:16px;margin-top:14px;align-items:center;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
@@ -542,6 +549,8 @@ async function runSearch() {
   
   document.getElementById('s-status').textContent =
     allResults.length ? `✓ ${allResults.length} carriers in ${state}` : '';
+  // Update map color for this state
+  updateStateCount(state, allResults.length);
   pw.style.display = 'none';
   document.getElementById('search-btn').disabled = false;
   searching = false;
@@ -802,152 +811,122 @@ async function searchAllUS() {
 }
 document.getElementById('name-kw').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();});
 
-// ── US Map ──────────────────────────────────────────────────────────
-const STATE_COUNTS = {}; // { "TX": 342, ... } populated as users search
-
-// Simplified US state paths (D3-style viewBox 960x600)
-const STATE_PATHS = {
-"AL":"M 596 353 L 595 324 L 594 288 L 574 289 L 565 289 L 565 302 L 558 355 L 560 371 L 560 390 L 574 400 L 584 400 L 595 388 Z",
-"AK":"M 156 440 L 130 455 L 106 465 L 98 480 L 110 496 L 140 505 L 168 498 L 188 480 L 192 465 L 178 450 Z M 220 510 L 230 520 L 245 515 L 240 505 Z M 250 505 L 260 512 L 272 508 L 265 498 Z",
-"AZ":"M 180 308 L 178 330 L 176 370 L 200 385 L 218 398 L 244 410 L 254 392 L 258 340 L 258 308 Z",
-"AR":"M 520 295 L 518 320 L 518 345 L 556 348 L 572 347 L 574 330 L 576 308 L 558 304 L 540 300 Z",
-"CA":"M 86 238 L 90 260 L 94 290 L 100 320 L 108 350 L 120 376 L 140 388 L 158 370 L 168 348 L 176 320 L 178 308 L 166 284 L 148 260 L 130 238 L 110 224 Z",
-"CO":"M 258 270 L 258 308 L 258 340 L 358 338 L 358 270 Z",
-"CT":"M 742 178 L 738 196 L 756 200 L 762 182 Z",
-"DE":"M 740 210 L 738 228 L 750 232 L 756 220 L 752 208 Z",
-"FL":"M 560 390 L 560 371 L 574 400 L 584 400 L 600 410 L 614 420 L 628 440 L 636 460 L 626 480 L 610 492 L 594 488 L 580 472 L 568 452 L 556 430 Z",
-"GA":"M 560 390 L 595 388 L 608 384 L 620 375 L 626 355 L 624 330 L 598 325 L 576 308 L 574 330 L 572 347 L 556 348 L 558 355 L 558 371 Z",
-"HI":"M 192 480 L 200 488 L 212 486 L 214 478 L 204 472 Z M 220 472 L 228 480 L 240 476 L 238 466 L 226 464 Z M 248 468 L 256 474 L 264 470 L 260 460 Z M 270 462 L 280 468 L 288 464 L 282 454 Z",
-"ID":"M 178 168 L 170 196 L 164 224 L 168 248 L 176 260 L 188 260 L 202 248 L 214 230 L 220 210 L 218 188 L 208 168 Z",
-"IL":"M 520 230 L 516 256 L 514 284 L 518 295 L 520 295 L 540 300 L 548 285 L 550 260 L 548 235 Z",
-"IN":"M 548 235 L 550 260 L 548 285 L 570 284 L 572 262 L 572 237 Z",
-"IA":"M 460 220 L 458 244 L 460 258 L 516 256 L 520 230 L 502 222 Z",
-"KS":"M 360 295 L 358 338 L 460 338 L 462 295 Z",
-"KY":"M 548 285 L 548 308 L 560 315 L 580 318 L 596 315 L 616 308 L 626 295 L 612 285 L 590 282 L 572 284 Z",
-"LA":"M 492 375 L 488 395 L 492 415 L 510 425 L 530 420 L 548 408 L 556 390 L 540 385 L 520 378 Z",
-"ME":"M 790 138 L 784 158 L 790 175 L 808 172 L 818 158 L 812 140 Z",
-"MD":"M 698 220 L 694 234 L 712 240 L 730 238 L 740 228 L 738 218 L 720 216 Z",
-"MA":"M 748 172 L 744 186 L 762 190 L 778 188 L 782 176 L 768 170 Z",
-"MI":"M 542 175 L 540 198 L 548 215 L 564 220 L 578 214 L 582 196 L 572 178 Z M 532 220 L 526 232 L 536 242 L 550 240 L 556 228 Z",
-"MN":"M 460 148 L 456 172 L 454 196 L 458 220 L 460 220 L 502 222 L 510 205 L 510 175 L 506 150 Z",
-"MS":"M 520 295 L 518 320 L 518 345 L 520 378 L 540 385 L 548 375 L 558 355 L 556 348 L 518 345 L 518 320 L 520 295 Z M 528 295 L 528 345 L 548 345 L 558 348 L 558 355 L 548 375 L 540 385 L 548 408 L 548 375 Z",
-"MO":"M 460 258 L 458 284 L 462 295 L 460 338 L 520 345 L 518 320 L 520 295 L 518 295 L 514 284 L 516 256 L 460 258 Z",
-"MT":"M 178 138 L 178 168 L 208 168 L 280 165 L 340 162 L 342 138 Z",
-"NE":"M 358 248 L 358 270 L 358 295 L 360 295 L 462 295 L 462 270 L 462 248 Z",
-"NV":"M 140 238 L 130 238 L 110 224 L 100 250 L 104 280 L 110 310 L 130 330 L 148 340 L 158 330 L 166 310 L 176 290 L 176 270 L 176 248 L 166 238 Z",
-"NH":"M 768 150 L 764 172 L 766 188 L 782 188 L 782 176 L 778 158 L 774 148 Z",
-"NJ":"M 726 210 L 722 226 L 728 240 L 742 238 L 748 226 L 744 212 Z",
-"NM":"M 244 310 L 244 370 L 244 410 L 258 410 L 360 408 L 360 338 L 358 308 L 258 308 Z",
-"NY":"M 660 178 L 654 200 L 660 215 L 680 218 L 700 218 L 718 215 L 726 208 L 726 196 L 710 185 L 692 178 Z M 730 178 L 740 186 L 748 178 L 742 168 L 730 170 Z",
-"NC":"M 604 300 L 598 318 L 618 325 L 640 328 L 666 325 L 694 320 L 712 310 L 718 298 L 704 292 L 680 290 L 658 292 L 636 294 Z",
-"ND":"M 342 138 L 340 162 L 454 162 L 456 148 L 456 138 Z",
-"OH":"M 572 237 L 572 262 L 572 284 L 590 282 L 612 278 L 626 268 L 630 248 L 626 230 L 604 225 L 586 228 Z",
-"OK":"M 358 338 L 358 370 L 360 380 L 462 380 L 518 378 L 518 345 L 460 338 Z",
-"OR":"M 86 168 L 86 198 L 88 228 L 110 224 L 130 218 L 148 212 L 166 210 L 176 208 L 178 188 L 178 168 L 148 160 Z",
-"PA":"M 628 205 L 624 228 L 660 232 L 694 232 L 698 220 L 698 208 L 672 202 L 648 200 Z",
-"RI":"M 762 182 L 758 192 L 762 200 L 772 198 L 772 186 Z",
-"SC":"M 598 325 L 596 345 L 606 360 L 624 368 L 640 362 L 654 348 L 658 332 L 640 328 L 618 325 Z",
-"SD":"M 342 162 L 340 192 L 340 220 L 360 222 L 460 222 L 460 220 L 458 196 L 456 172 L 454 162 Z",
-"TN":"M 548 308 L 548 330 L 556 338 L 572 340 L 598 338 L 624 335 L 626 320 L 626 308 L 616 308 L 596 315 L 580 318 L 560 315 Z",
-"TX":"M 244 370 L 244 410 L 258 410 L 280 430 L 300 460 L 318 490 L 340 510 L 370 515 L 400 510 L 430 495 L 448 478 L 460 460 L 462 430 L 462 400 L 462 380 L 360 380 L 358 370 Z",
-"UT":"M 176 248 L 176 290 L 176 310 L 176 320 L 176 340 L 258 340 L 258 308 L 258 270 L 258 248 Z",
-"VT":"M 752 152 L 748 172 L 752 182 L 766 182 L 768 166 L 764 152 Z",
-"VA":"M 626 268 L 620 285 L 626 295 L 640 300 L 660 300 L 680 298 L 700 292 L 718 285 L 720 272 L 706 262 L 688 258 L 668 260 L 648 264 Z",
-"WA":"M 86 138 L 86 168 L 148 160 L 178 158 L 178 138 Z",
-"WV":"M 626 248 L 626 268 L 648 264 L 668 258 L 672 245 L 662 232 L 648 232 L 636 238 Z",
-"WI":"M 504 175 L 500 198 L 500 220 L 510 230 L 520 230 L 548 235 L 556 228 L 552 208 L 548 188 L 536 175 Z",
-"WY":"M 218 188 L 220 210 L 216 230 L 220 248 L 258 248 L 358 248 L 358 210 L 358 188 Z"
+// ── US Map (Leaflet) ─────────────────────────────────────────────────
+const STATE_COUNTS = {};
+const STATE_ABBR = {
+  "Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA",
+  "Colorado":"CO","Connecticut":"CT","Delaware":"DE","Florida":"FL","Georgia":"GA",
+  "Hawaii":"HI","Idaho":"ID","Illinois":"IL","Indiana":"IN","Iowa":"IA",
+  "Kansas":"KS","Kentucky":"KY","Louisiana":"LA","Maine":"ME","Maryland":"MD",
+  "Massachusetts":"MA","Michigan":"MI","Minnesota":"MN","Mississippi":"MS","Missouri":"MO",
+  "Montana":"MT","Nebraska":"NE","Nevada":"NV","New Hampshire":"NH","New Jersey":"NJ",
+  "New Mexico":"NM","New York":"NY","North Carolina":"NC","North Dakota":"ND","Ohio":"OH",
+  "Oklahoma":"OK","Oregon":"OR","Pennsylvania":"PA","Rhode Island":"RI","South Carolina":"SC",
+  "South Dakota":"SD","Tennessee":"TN","Texas":"TX","Utah":"UT","Vermont":"VT",
+  "Virginia":"VA","Washington":"WA","West Virginia":"WV","Wisconsin":"WI","Wyoming":"WY"
 };
+const ABBR_TO_CODE = Object.fromEntries(Object.entries(STATE_ABBR).map(([k,v])=>[v,k]));
 
-const STATE_LABELS = {
-  "AL":[538,378],"AK":[130,478],"AZ":[238,365],"AR":[518,340],"CA":[145,295],
-  "CO":[328,293],"CT":[782,191],"DE":[769,218],"FL":[590,430],"GA":[572,368],
-  "HI":[268,525],"ID":[222,192],"IL":[508,272],"IN":[548,268],"IA":[459,235],
-  "KS":[398,303],"KY":[578,307],"LA":[500,405],"ME":[826,142],"MD":[745,232],
-  "MA":[802,178],"MI":[560,198],"MN":[458,180],"MS":[514,375],"MO":[489,312],
-  "MT":[268,154],"NE":[398,263],"NV":[180,278],"NH":[804,168],"NJ":[763,213],
-  "NM":[310,362],"NY":[734,188],"NC":[676,312],"ND":[388,143],"OH":[590,260],
-  "OK":[418,342],"OR":[158,190],"PA":[704,218],"RI":[808,196],"SC":[638,348],
-  "SD":[388,188],"TN":[563,335],"TX":[418,415],"UT":[243,286],"VT":[784,164],
-  "VA":[692,275],"WA":[158,140],"WV":[640,274],"WI":[505,198],"WY":[318,216]
-};
-
+let leafletMap = null;
+let statesLayer = null;
 let mapInitialized = false;
 
-function getStateColor(code) {
-  const count = STATE_COUNTS[code];
-  if (!count) return '#EBF5FB';
-  if (count < 100) return '#AED6F1';
-  if (count < 300) return '#2E86C1';
+function colorForCount(count) {
+  if (count == null) return '#EBF5FB';
+  if (count <= 100)  return '#AED6F1';
+  if (count <= 300)  return '#2E86C1';
   return '#1B4F72';
 }
 
-function getStateTextColor(code) {
-  const count = STATE_COUNTS[code];
-  if (!count || count < 100) return '#2c3e50';
+function textColorForCount(count) {
+  if (count == null || count <= 100) return '#2c3e50';
   return '#ffffff';
 }
 
 function initMap() {
   if (mapInitialized) { refreshMapColors(); return; }
   mapInitialized = true;
-  const svg = document.getElementById('us-map');
-  const tooltip = document.getElementById('map-tooltip');
 
-  // Build SVG
-  let svgContent = '';
-  for (const [code, path] of Object.entries(STATE_PATHS)) {
-    const [lx, ly] = STATE_LABELS[code] || [0,0];
-    const stateName = STATES.find(s => s[0] === code)?.[1] || code;
-    svgContent += `
-      <g id="state-${code}" class="state-group" data-code="${code}" data-name="${stateName}" style="cursor:pointer;">
-        <path d="${path}" fill="${getStateColor(code)}" stroke="#fff" stroke-width="1.5" style="transition:fill 0.2s;"/>
-        <text x="${lx}" y="${ly}" text-anchor="middle" font-size="9" font-family="DM Mono,monospace" fill="${getStateTextColor(code)}" pointer-events="none" font-weight="500">${code}</text>
-      </g>`;
-  }
-  svg.innerHTML = svgContent;
-
-  // Events
-  svg.addEventListener('mousemove', (e) => {
-    const g = e.target.closest('.state-group');
-    if (!g) { tooltip.style.display = 'none'; return; }
-    const code = g.dataset.code;
-    const name = g.dataset.name;
-    const count = STATE_COUNTS[code];
-    tooltip.style.display = 'block';
-    tooltip.style.left = (e.clientX + 14) + 'px';
-    tooltip.style.top  = (e.clientY - 10) + 'px';
-    tooltip.innerHTML = `<strong>${name} (${code})</strong><br/>${count !== undefined ? count + ' carriers found' : 'Click to search'}`;
+  leafletMap = L.map('us-map', {
+    center: [37.8, -96],
+    zoom: 4,
+    scrollWheelZoom: false,
+    preferCanvas: true,
+    zoomControl: true,
   });
 
-  svg.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap contributors © CARTO',
+    maxZoom: 19,
+  }).addTo(leafletMap);
 
-  svg.addEventListener('click', (e) => {
-    const g = e.target.closest('.state-group');
-    if (!g) return;
-    tooltip.style.display = 'none';
-    const code = g.dataset.code;
-    // Switch to search panel and trigger search
-    document.getElementById('sel-state').value = code;
-    document.getElementById('inp-city').value = '';
-    showPanel('search', document.getElementById('nav-search'));
-    runSearch();
-  });
+  fetch('https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json')
+    .then(r => r.json())
+    .then(geo => {
+      statesLayer = L.geoJson(geo, {
+        style: (feature) => ({
+          fillColor: colorForCount(STATE_COUNTS[STATE_ABBR[feature.properties.name]]),
+          weight: 1.2,
+          color: '#ffffff',
+          fillOpacity: 0.85,
+        }),
+        onEachFeature: (feature, layer) => {
+          const fullName = feature.properties.name;
+          const code = STATE_ABBR[fullName];
+          if (!code) return; // skip non-US territories
+
+          // Hover tooltip
+          layer.bindTooltip(() => {
+            const count = STATE_COUNTS[code];
+            return count != null
+              ? `<strong>${fullName} (${code})</strong><br/>${count} carriers found`
+              : `<strong>${fullName} (${code})</strong><br/>Click to search`;
+          }, { sticky: true, className: 'carriernet-tooltip' });
+
+          // State abbreviation label
+          const center = layer.getBounds().getCenter();
+          L.tooltip({
+            permanent: true,
+            direction: 'center',
+            className: 'state-label',
+          })
+            .setContent(code)
+            .setLatLng(center)
+            .addTo(leafletMap);
+
+          layer.on({
+            mouseover: (e) => e.target.setStyle({ weight: 2.5, fillOpacity: 1, color: '#32AAE1' }),
+            mouseout:  (e) => statesLayer.resetStyle(e.target),
+            click: () => {
+              document.getElementById('sel-state').value = code;
+              document.getElementById('inp-city').value = '';
+              showPanel('search', document.getElementById('nav-search'));
+              runSearch();
+            },
+          });
+        }
+      }).addTo(leafletMap);
+
+      document.getElementById('map-status').textContent = 'Click any state to search carriers';
+    })
+    .catch(() => {
+      document.getElementById('map-status').textContent = 'Map failed to load — check connection';
+    });
 }
 
 function refreshMapColors() {
-  if (!mapInitialized) return;
-  for (const code of Object.keys(STATE_PATHS)) {
-    const g = document.getElementById(`state-${code}`);
-    if (!g) continue;
-    const path = g.querySelector('path');
-    const text = g.querySelector('text');
-    if (path) path.setAttribute('fill', getStateColor(code));
-    if (text) text.setAttribute('fill', getStateTextColor(code));
-  }
+  if (!statesLayer) return;
+  statesLayer.eachLayer(layer => {
+    const code = STATE_ABBR[layer.feature.properties.name];
+    if (code) layer.setStyle({ fillColor: colorForCount(STATE_COUNTS[code]) });
+  });
 }
 
-// map stats update removed
+function updateStateCount(code, count) {
+  STATE_COUNTS[code] = count;
+  document.getElementById('map-status').textContent = Object.keys(STATE_COUNTS).length + ' state(s) searched';
+  refreshMapColors();
+}
 // ── End Map ──────────────────────────────────────────────────────────
 
 </script>
