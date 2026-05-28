@@ -1141,8 +1141,6 @@ async function renderDetailPanel(c) {
   document.getElementById('dp-body').innerHTML = `
     <div class="qual-card" id="dp-qual-card">
       <div class="qual-title">Carrier Qualification Guidelines</div>
-      ${loadingQualRow('Basic Percentile Scores')}
-      ${loadingQualRow('Carrier Safety Rating')}
       ${loadingQualRow('Carrier Authority')}
       ${loadingQualRow('Insurance Coverage')}
       <div id="dp-qual-verdict" class="qual-verdict qual-verdict-unk" style="margin-top:10px;">Checking…</div>
@@ -1203,70 +1201,41 @@ async function renderDetailPanel(c) {
   const insReq  = (auth.insuranceRequired || '').toUpperCase();
   const oos     = auth.outOfServiceDate || '';
 
-  // ── 1. BASIC PERCENTILE SCORES ───────────────────────────────────
-  // Carrier411: GOOD unless safety rating is Unsatisfactory (U)
-  // "Not Rated" is GOOD — new carriers haven't been rated yet
-  let basicStatus, basicLabel;
-  if (sr === 'U' || sr === 'UNSATISFACTORY') {
-    basicStatus = 'bad'; basicLabel = 'Basic Percentile Scores (Unsatisfactory)';
-  } else {
-    basicStatus = 'good'; basicLabel = 'Basic Percentile Scores';
-  }
-
-  // ── 2. CARRIER SAFETY RATING ─────────────────────────────────────
-  // Carrier411: GOOD = Satisfactory or Not Rated, ISSUE = Conditional or Unsatisfactory
-  let safetyStatus, safetyLabel;
-  if (sr === 'S' || sr === 'SATISFACTORY' || sr === '' || sr === 'NONE' || sr === 'NOT RATED') {
-    safetyStatus = 'good';
-    safetyLabel  = sr === 'S' || sr === 'SATISFACTORY' ? 'Carrier Safety Rating (Satisfactory)' : 'Carrier Safety Rating (Not Rated)';
-  } else if (sr === 'C' || sr === 'CONDITIONAL') {
-    safetyStatus = 'warn'; safetyLabel = 'Carrier Safety Rating (Conditional)';
-  } else {
-    safetyStatus = 'bad'; safetyLabel = 'Carrier Safety Rating (Unsatisfactory)';
-  }
-
-  // ── 3. CARRIER AUTHORITY ─────────────────────────────────────────
-  // Carrier411: GOOD = common or contract authority Active (A)
+  // ── 1. CARRIER AUTHORITY ─────────────────────────────────────────
   let authStatus, authLabel;
   if (ca === 'A' || ct === 'A') {
-    authStatus = 'good';
-    authLabel  = `Carrier Authority (Active)`;
+    authStatus = 'good'; authLabel = 'Carrier Authority (Active)';
   } else if (ca === 'P' || ct === 'P') {
     authStatus = 'warn'; authLabel = 'Carrier Authority (Pending)';
   } else if (oos) {
-    authStatus = 'bad'; authLabel = `Carrier Authority (Out of Service)`;
+    authStatus = 'bad'; authLabel = 'Carrier Authority (Out of Service)';
   } else {
     authStatus = 'bad';
     authLabel  = ca === 'I' || ct === 'I' ? 'Carrier Authority (Inactive)' : 'Carrier Authority (None)';
   }
 
-  // ── 4. INSURANCE COVERAGE ────────────────────────────────────────
-  // Carrier411: GOOD = BIPD insurance on file (Y), ISSUE = not on file or unknown
+  // ── 2. INSURANCE COVERAGE ────────────────────────────────────────
+  // Unverified = bad, matching Carrier411 behaviour
   let insStatus, insLabel;
   if (oos) {
-    insStatus = 'bad'; insLabel = `Insurance Coverage (Out of Service)`;
+    insStatus = 'bad'; insLabel = 'Insurance Coverage (Out of Service)';
   } else if (insFile === 'Y') {
     insStatus = 'good'; insLabel = 'Insurance Coverage (On File)';
-  } else if (insFile === 'N') {
-    insStatus = 'bad'; insLabel = 'Insurance Coverage (Not on File)';
   } else {
-    insStatus = 'warn'; insLabel = 'Insurance Coverage (Unverified)';
+    insStatus = 'bad';
+    insLabel  = insFile === 'N' ? 'Insurance Coverage (Not on File)' : 'Insurance Coverage (Unverified)';
   }
 
   // ── Overall verdict ──────────────────────────────────────────────
-  // Mirrors Carrier411 "POLICY: ACCEPTABLE / NOT ACCEPTABLE"
-  const allGood = [basicStatus, safetyStatus, authStatus, insStatus].every(s => s === 'good');
-  const anyBad  = [basicStatus, safetyStatus, authStatus, insStatus].some(s => s === 'bad');
-  const anyWarn = [basicStatus, safetyStatus, authStatus, insStatus].some(s => s === 'warn');
+  const allGood = authStatus === 'good' && insStatus === 'good';
+  const anyBad  = authStatus === 'bad'  || insStatus === 'bad';
   let verdict, verdictCls;
   if (allGood) {
     verdict = '✅  POLICY: ACCEPTABLE'; verdictCls = 'qual-verdict-pass';
   } else if (anyBad) {
     verdict = '❌  POLICY: NOT ACCEPTABLE'; verdictCls = 'qual-verdict-fail';
-  } else if (anyWarn) {
-    verdict = '⚠️  POLICY: REVIEW REQUIRED'; verdictCls = 'qual-verdict-warn';
   } else {
-    verdict = '⏳  VERIFY MANUALLY'; verdictCls = 'qual-verdict-unk';
+    verdict = '⚠️  POLICY: REVIEW REQUIRED'; verdictCls = 'qual-verdict-warn';
   }
 
   // ── Re-render scorecard ──────────────────────────────────────────
@@ -1274,10 +1243,8 @@ async function renderDetailPanel(c) {
   if (!card) return;
   card.innerHTML = `
     <div class="qual-title">Carrier Qualification Guidelines</div>
-    ${qualRow(basicLabel,  basicStatus)}
-    ${qualRow(safetyLabel, safetyStatus)}
-    ${qualRow(authLabel,   authStatus)}
-    ${qualRow(insLabel,    insStatus)}
+    ${qualRow(authLabel, authStatus)}
+    ${qualRow(insLabel,  insStatus)}
     <div class="qual-verdict ${verdictCls}" style="margin-top:10px;">${verdict}</div>
     <a href="${safer411}" target="_blank" class="btn-freightguard">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
