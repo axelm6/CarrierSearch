@@ -512,6 +512,7 @@ async function runRegionSearch(states, regionLabel) {
   if (searching) return;
   searching = true;
   allResults = [];
+  qcFilter = 'all';
   const seen = new Set();
   const pgSz = parseInt(document.getElementById('page-size').value);
   document.getElementById('search-btn').disabled = true;
@@ -576,7 +577,7 @@ async function runSearch(offsetStart) {
   const pgSz   = parseInt(document.getElementById('page-size').value);
   offsetStart  = offsetStart || 0;
 
-  if (offsetStart === 0) allResults = [];
+  if (offsetStart === 0) { allResults = []; qcFilter = 'all'; }
   const seen = new Set(allResults.map(c => String(c.dotNumber)));
 
   document.getElementById('search-btn').disabled = true;
@@ -668,26 +669,84 @@ function loadMore(offset) {
   runSearch(offset);
 }
 
-function renderPage(page, pgSz) {
-  const slice = allResults.slice(page * pgSz, (page + 1) * pgSz);
-  renderTable(slice, page, pgSz);
+function qcFilterBar() {
+  const opts = [
+    { val: 'all',          label: 'All carriers' },
+    { val: 'no-authority', label: '⚠️ No active authority' },
+    { val: 'ins-review',   label: '⚠️ Insurance needs review' },
+  ];
+  return `<div style="display:flex;align-items:center;gap:6px;">
+    <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:0.08em;white-space:nowrap;">QC FILTER</span>
+    <div class="sel-wrap" style="min-width:190px;">
+      <select onchange="applyQcFilter(this.value)" style="background:var(--surface2);border:1px solid ${qcFilter!=='all'?'var(--amber)':'var(--border)'};color:${qcFilter!=='all'?'var(--amber)':'var(--text)'};border-radius:var(--radius);padding:6px 28px 6px 10px;font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;appearance:none;outline:none;width:100%;cursor:pointer;">
+        ${opts.map(o => `<option value="${o.val}" ${qcFilter===o.val?'selected':''}>${o.label}</option>`).join('')}
+      </select>
+    </div>
+  </div>`;
 }
 
-function renderTable(carriers, page, pgSz) {
+// QC filter state
+let qcFilter = 'all';
+
+function applyQcFilter(val) {
+  qcFilter = val;
+  const pgSz = parseInt(document.getElementById('page-size').value);
+  renderPage(0, pgSz);
+}
+
+function getFilteredResults() {
+  if (qcFilter === 'all') return allResults;
+  return allResults.filter(c => {
+    const ca = (c.commonAuthorityStatus || '').toUpperCase();
+    const ct = (c.contractAuthorityStatus || '').toUpperCase();
+    const allowed = (c.allowedToOperate || '').toUpperCase();
+    const ins = (c.bipdInsuranceOnFile || '').toUpperCase();
+    const insReq = (c.bipdInsuranceRequired || '').toUpperCase();
+
+    // No active authority: common and contract are NOT 'A'
+    if (qcFilter === 'no-authority') {
+      return ca !== 'A' && ct !== 'A' && allowed !== 'Y';
+    }
+    // Insurance needs review: required but not confirmed on file
+    if (qcFilter === 'ins-review') {
+      return insReq === 'Y' && ins !== 'Y';
+    }
+    return true;
+  });
+}
+
+function renderPage(page, pgSz) {
+  const filtered = getFilteredResults();
+  const slice = filtered.slice(page * pgSz, (page + 1) * pgSz);
+  renderTable(slice, page, pgSz, filtered.length);
+}
+
+function renderTable(carriers, page, pgSz, filteredTotal) {
   const area  = document.getElementById('results-area');
   const state = stateSel.value;
   const city  = document.getElementById('inp-city').value.trim();
-  const total = allResults.length;
+  const total = filteredTotal !== undefined ? filteredTotal : allResults.length;
 
-  if (!total) {
+  if (!allResults.length) {
     area.innerHTML = `<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div><div class="st">No carriers found in ${state}${city?' · '+h(city):''}</div><div class="ss">Try removing the city filter, or set Authority Status to "All".</div></div>`;
+    document.getElementById('pag-row').style.display = 'none';
+    return;
+  }
+
+  if (!carriers.length) {
+    area.innerHTML = `
+      <div class="results-hdr">${qcFilterBar()}</div>
+      <div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
+      <div class="st">No carriers match this filter</div>
+      <div class="ss">Try a different QC filter or clear it to see all results.</div></div>`;
     document.getElementById('pag-row').style.display = 'none';
     return;
   }
 
   const saved = new Set(outreachList.map(c => c.dot));
   const s = page * pgSz + 1, e = Math.min(s + pgSz - 1, total);
-  const label = city ? `${state} · ${h(city)}` : state;
+  const label = city ? `${state} · ${h(city)}` : (state || 'all states');
+  const filterNote = qcFilter !== 'all' ? ` <span style="color:var(--amber);font-weight:800;">(filtered: ${total} of ${allResults.length})</span>` : ``;
 
   const rows = carriers.map(c => {
     const dot   = String(c.dotNumber || c.dot || '');
@@ -712,10 +771,13 @@ function renderTable(carriers, page, pgSz) {
 
   area.innerHTML = `
     <div class="results-hdr">
-      <div class="results-count">Showing <strong>${s}–${e}</strong> of <strong>${total}</strong> carriers in <strong>${label}</strong></div>
-      <button class="btn btn-ghost" style="font-size:12px;padding:5px 12px;" onclick="exportResults()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export all ${total}
-      </button>
+      <div class="results-count">Showing <strong>${s}–${e}</strong> of <strong>${total}</strong> carriers in <strong>${label}</strong>${filterNote}</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        ${qcFilterBar()}
+        <button class="btn btn-ghost" style="font-size:12px;padding:5px 12px;" onclick="exportResults()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export ${qcFilter !== 'all' ? total : allResults.length}
+        </button>
+      </div>
     </div>
     <div class="table-wrap">
       <table>
@@ -1073,8 +1135,6 @@ async function renderDetailPanel(c) {
   document.getElementById('dp-body').innerHTML = `
     <div class="qual-card" id="dp-qual-card">
       <div class="qual-title">Carrier Qualification</div>
-      ${loadingQualRow('BASIC Percentile Scores')}
-      ${loadingQualRow('Carrier Safety Rating')}
       ${loadingQualRow('Carrier Authority')}
       ${loadingQualRow('Insurance Coverage')}
       <div id="dp-qual-verdict" class="qual-verdict qual-verdict-unk" style="margin-top:10px;">Checking…</div>
@@ -1125,38 +1185,10 @@ async function renderDetailPanel(c) {
     </div>`;
 
   // ── Fetch authority + BASIC scores in parallel ────────────────────
-  const [authData, basicData] = await Promise.allSettled([
-    fetch(`/api/authority?dot=${dot}`).then(r => r.json()),
-    fetch(`https://ai.fmcsa.dot.gov/SMS/api/Carrier/${dot}/BasicInfo?apiKey=`)
-      .then(r => r.json()).catch(() => null),
-  ]);
+  const authResult = await fetch(`/api/authority?dot=${dot}`).then(r => r.json()).catch(() => ({}));
+  const auth = authResult || {};
 
-  const auth  = authData.status  === 'fulfilled' ? authData.value  : {};
-  const basic = basicData.status === 'fulfilled' ? basicData.value : null;
-
-  // ── Score each check ─────────────────────────────────────────────
-  // 1. BASIC Percentile Scores — from SMS API
-  let basicStatus = 'unk';
-  let basicDetail = '';
-  if (basic && basic.basics) {
-    const alerts = basic.basics.filter(b => b.alertIssued === 'Y').length;
-    if      (alerts === 0) { basicStatus = 'good'; basicDetail = 'No alerts'; }
-    else if (alerts <= 2)  { basicStatus = 'warn'; basicDetail = `${alerts} alert${alerts>1?'s':''}`; }
-    else                   { basicStatus = 'bad';  basicDetail = `${alerts} alerts`; }
-  } else {
-    // SMS API requires registration key — fall back to 'unk' gracefully
-    basicStatus = 'unk';
-  }
-
-  // 2. Safety Rating
-  let safetyStatus = 'unk';
-  const sr = (auth.safetyRating || '').toUpperCase();
-  if      (sr === 'SATISFACTORY')   safetyStatus = 'good';
-  else if (sr === 'CONDITIONAL')    safetyStatus = 'warn';
-  else if (sr === 'UNSATISFACTORY') safetyStatus = 'bad';
-  else if (sr === '' || sr === 'NOT RATED' || sr === 'NONE') safetyStatus = 'unk'; // unrated is normal/OK
-
-  // 3. Carrier Authority
+  // Carrier Authority
   let authStatus = 'unk';
   const ca = auth.commonAuthorityStatus || '';
   const ct = auth.contractAuthorityStatus || '';
@@ -1164,49 +1196,40 @@ async function renderDetailPanel(c) {
   else if (ca === 'P' || ct === 'P') authStatus = 'warn';
   else if (ca === 'I' || ct === 'I') authStatus = 'bad';
 
-  // 4. Insurance Coverage
+  // Insurance Coverage
   let insStatus = 'unk';
   const insReq  = (auth.insuranceRequired || '').toUpperCase();
   const insFile = (auth.insuranceOnFile   || '').toUpperCase();
   const oos     = auth.outOfServiceDate || '';
-  if      (oos)              insStatus = 'bad';   // out of service overrides
+  if      (oos)              insStatus = 'bad';
   else if (insFile === 'Y')  insStatus = 'good';
   else if (insFile === 'N' && insReq === 'Y') insStatus = 'bad';
-  else if (insReq === 'Y')   insStatus = 'warn';  // required but unknown if on file
+  else if (insReq === 'Y')   insStatus = 'warn';
 
   // ── Overall verdict ──────────────────────────────────────────────
-  const statuses = [basicStatus, safetyStatus, authStatus, insStatus];
-  const hasBad   = statuses.includes('bad');
-  const hasWarn  = statuses.includes('warn');
-  // Authority is mandatory — if it's bad the overall is always fail
   let verdict, verdictCls;
-  if (authStatus === 'bad' || hasBad) {
+  if (authStatus === 'bad' || insStatus === 'bad') {
     verdict = '❌  NOT RECOMMENDED'; verdictCls = 'qual-verdict-fail';
-  } else if (authStatus === 'good' && !hasWarn) {
+  } else if (authStatus === 'good' && insStatus === 'good') {
     verdict = '✅  LOOKS GOOD TO USE'; verdictCls = 'qual-verdict-pass';
-  } else if (authStatus === 'good' && hasWarn) {
+  } else if (authStatus === 'good' && insStatus === 'warn') {
     verdict = '⚠️  REVIEW BEFORE USE'; verdictCls = 'qual-verdict-warn';
   } else {
     verdict = '⏳  VERIFY MANUALLY'; verdictCls = 'qual-verdict-unk';
   }
 
-  // ── Re-render scorecard with real data ──────────────────────────
-  const basicLabel = basicDetail ? `BASIC Percentile Scores (${basicDetail})` : 'BASIC Percentile Scores';
-  const safetyLabel = sr && sr !== 'NONE' && sr !== 'NOT RATED' && sr !== ''
-    ? `Safety Rating (${sr.charAt(0) + sr.slice(1).toLowerCase()})` : 'Safety Rating (Not Rated)';
+  // ── Re-render scorecard ──────────────────────────────────────────
   const authLabel = ca === 'A' || ct === 'A' ? 'Carrier Authority (Active)' :
                     ca === 'P' || ct === 'P' ? 'Carrier Authority (Pending)' :
                     ca === 'I' || ct === 'I' ? 'Carrier Authority (Inactive)' : 'Carrier Authority';
-  const insLabel = oos ? `Insurance / OOS (Out of Service ${oos})` :
-                   insFile === 'Y' ? 'Insurance Coverage (On File)' :
-                   insFile === 'N' ? 'Insurance Coverage (Not on File)' : 'Insurance Coverage';
+  const insLabel  = oos ? `Insurance / OOS (Out of Service ${oos})` :
+                    insFile === 'Y' ? 'Insurance Coverage (On File)' :
+                    insFile === 'N' ? 'Insurance Coverage (Not on File)' : 'Insurance Coverage';
 
   const card = document.getElementById('dp-qual-card');
   if (!card) return;
   card.innerHTML = `
     <div class="qual-title">Carrier Qualification</div>
-    ${qualRow(basicLabel, basicStatus)}
-    ${qualRow(safetyLabel, safetyStatus)}
     ${qualRow(authLabel, authStatus)}
     ${qualRow(insLabel, insStatus)}
     <div class="qual-verdict ${verdictCls}" style="margin-top:10px;">${verdict}</div>
