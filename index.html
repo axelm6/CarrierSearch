@@ -669,22 +669,6 @@ function loadMore(offset) {
   runSearch(offset);
 }
 
-function qcFilterBar() {
-  const opts = [
-    { val: 'all',          label: 'All carriers' },
-    { val: 'no-authority', label: '⚠️ No active authority' },
-    { val: 'ins-review',   label: '⚠️ Insurance needs review' },
-  ];
-  return `<div style="display:flex;align-items:center;gap:6px;">
-    <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:0.08em;white-space:nowrap;">QC FILTER</span>
-    <div class="sel-wrap" style="min-width:190px;">
-      <select onchange="applyQcFilter(this.value)" style="background:var(--surface2);border:1px solid ${qcFilter!=='all'?'var(--amber)':'var(--border)'};color:${qcFilter!=='all'?'var(--amber)':'var(--text)'};border-radius:var(--radius);padding:6px 28px 6px 10px;font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;appearance:none;outline:none;width:100%;cursor:pointer;">
-        ${opts.map(o => `<option value="${o.val}" ${qcFilter===o.val?'selected':''}>${o.label}</option>`).join('')}
-      </select>
-    </div>
-  </div>`;
-}
-
 // QC filter state
 let qcFilter = 'all';
 
@@ -697,22 +681,54 @@ function applyQcFilter(val) {
 function getFilteredResults() {
   if (qcFilter === 'all') return allResults;
   return allResults.filter(c => {
-    const ca = (c.commonAuthorityStatus || '').toUpperCase();
-    const ct = (c.contractAuthorityStatus || '').toUpperCase();
-    const allowed = (c.allowedToOperate || '').toUpperCase();
-    const ins = (c.bipdInsuranceOnFile || '').toUpperCase();
-    const insReq = (c.bipdInsuranceRequired || '').toUpperCase();
 
-    // No active authority: common and contract are NOT 'A'
+    // ── No confirmed MC docket ───────────────────────────────────────
+    // docketNumber is the active MC slot we picked in carriers.js.
+    // Missing or '0' means no active MC authority was found.
     if (qcFilter === 'no-authority') {
-      return ca !== 'A' && ct !== 'A' && allowed !== 'Y';
+      const hasDocket = c.docketNumber && c.docketNumber !== '0' && c.docketNumber !== '';
+      return !hasDocket;
     }
-    // Insurance needs review: required but not confirmed on file
-    if (qcFilter === 'ins-review') {
-      return insReq === 'Y' && ins !== 'Y';
+
+    // ── No phone on file ────────────────────────────────────────────
+    if (qcFilter === 'no-phone') {
+      const phone = (c.telephone || c.phone || '').replace(/\D/g, '');
+      return phone.length < 7;
     }
+
+    // ── Small fleet (1–3 power units) ───────────────────────────────
+    if (qcFilter === 'small-fleet') {
+      const units = parseInt(c.totalPowerUnits) || 0;
+      return units >= 1 && units <= 3;
+    }
+
+    // ── Large fleet (10+ power units) ───────────────────────────────
+    if (qcFilter === 'large-fleet') {
+      const units = parseInt(c.totalPowerUnits) || 0;
+      return units >= 10;
+    }
+
     return true;
   });
+}
+
+function qcFilterBar() {
+  const opts = [
+    { val: 'all',          label: 'All carriers' },
+    { val: 'no-authority', label: '⚠️ No confirmed MC docket' },
+    { val: 'no-phone',     label: '⚠️ No phone on file' },
+    { val: 'small-fleet',  label: '🚛 Small fleet (1–3 units)' },
+    { val: 'large-fleet',  label: '🚛 Large fleet (10+ units)' },
+  ];
+  const active = qcFilter !== 'all';
+  return `<div style="display:flex;align-items:center;gap:6px;">
+    <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:0.08em;white-space:nowrap;">QC FILTER</span>
+    <div class="sel-wrap" style="min-width:215px;">
+      <select onchange="applyQcFilter(this.value)" style="background:var(--surface2);border:1px solid ${active?'var(--amber)':'var(--border)'};color:${active?'var(--amber)':'var(--text)'};border-radius:var(--radius);padding:6px 28px 6px 10px;font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;appearance:none;outline:none;width:100%;cursor:pointer;">
+        ${opts.map(o => `<option value="${o.val}" ${qcFilter===o.val?'selected':''}>${o.label}</option>`).join('')}
+      </select>
+    </div>
+  </div>`;
 }
 
 function renderPage(page, pgSz) {
