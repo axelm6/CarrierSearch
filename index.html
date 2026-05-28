@@ -772,6 +772,7 @@ function clearSearch(){
   document.getElementById('s-status').textContent='';
   document.getElementById('results-area').innerHTML=`<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div class="st">Select a state to find carriers</div><div class="ss">Pick any state from the dropdown above.</div></div>`;
   updateStats([]);
+  clearMapHighlights();
 }
 
 let tt;
@@ -906,10 +907,9 @@ let statesLayer = null;
 let mapInitialized = false;
 
 function colorForCount(count) {
-  if (count == null) return '#EBF5FB';
-  if (count <= 100)  return '#AED6F1';
-  if (count <= 300)  return '#2E86C1';
-  return '#1B4F72';
+  // Simple: searched = blue, not searched = light
+  if (count == null || count === 0) return '#EBF5FB';
+  return '#2E86C1';  // flat blue for any searched state
 }
 
 function textColorForCount(count) {
@@ -966,6 +966,13 @@ function refreshInlineMap() {
     const code = STATE_ABBR[layer.feature.properties.name];
     if (code) layer.setStyle({ fillColor: colorForCount(STATE_COUNTS[code]) });
   });
+}
+
+function clearMapHighlights() {
+  // Reset all state counts so map goes back to uncolored
+  Object.keys(STATE_COUNTS).forEach(k => delete STATE_COUNTS[k]);
+  refreshInlineMap();
+  refreshMapColors();
 }
 
 function initMap() {
