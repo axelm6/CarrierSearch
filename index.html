@@ -850,10 +850,33 @@ function renderTable(carriers, page, pgSz, filteredTotal) {
 }
 
 function updateStats(c) {
-  const cities = new Set(c.map(x=>x.phyCity).filter(Boolean)).size;
-  document.getElementById('sf').textContent = c.length||'—';
-  document.getElementById('sc').textContent = cities||'—';
-  document.getElementById('so').textContent = outreachList.length;
+  const cities = new Set(c.map(x => x.phyCity).filter(Boolean)).size;
+  document.getElementById('sf').textContent = c.length ? c.length.toLocaleString() : '—';
+  document.getElementById('sc').textContent = cities  ? cities.toLocaleString()   : '—';
+
+  // Outreach count: filter to current search context if a search is active
+  const currentState  = stateSel.value;
+  const currentCity   = (document.getElementById('inp-city') ? document.getElementById('inp-city').value.trim() : '').toLowerCase();
+  let outreachCount;
+  if (!currentState) {
+    // No search active — show total outreach list
+    outreachCount = outreachList.length;
+  } else {
+    // Filter outreach to match current state(s) selection
+    const activeStates = new Set();
+    // Check region checkboxes
+    document.querySelectorAll('.region-cb:checked').forEach(cb => {
+      (cb.dataset.states || '').split(',').forEach(s => activeStates.add(s.trim()));
+    });
+    if (currentState) activeStates.add(currentState.toUpperCase());
+
+    outreachCount = outreachList.filter(o => {
+      const stateMatch = activeStates.size === 0 || activeStates.has((o.state || '').toUpperCase());
+      const cityMatch  = !currentCity || (o.city || '').toLowerCase().includes(currentCity);
+      return stateMatch && cityMatch;
+    }).length;
+  }
+  document.getElementById('so').textContent = outreachCount;
 }
 
 function bdg(code, allowed, statusCode) {
@@ -890,13 +913,13 @@ function addToOutreach(el) {
   const btn=document.getElementById(`btn-${carrier.dot}`);
   if(btn){btn.textContent='✓ Saved';btn.classList.add('added');}
   updOC(); updSP();
-  document.getElementById('so').textContent=outreachList.length;
+  updateStats(allResults);
   showToast(`${carrier.name} added to outreach list`);
 }
 function removeOutreach(dot){
   outreachList=outreachList.filter(c=>c.dot!==dot);
   saveOutreach(); updOC(); updSP(); renderOutreach();
-  document.getElementById('so').textContent=outreachList.length;
+  updateStats(allResults);
   const btn=document.getElementById(`btn-${dot}`);
   if(btn){btn.textContent='+ Add';btn.classList.remove('added');}
 }
@@ -984,7 +1007,7 @@ function clearOutreach(){
   if(!outreachList.length)return;
   if(!confirm(`Remove all ${outreachList.length} carriers?`))return;
   outreachList=[];saveOutreach();updOC();updSP();renderOutreach();
-  document.getElementById('so').textContent=0;
+  updateStats(allResults);
   document.querySelectorAll('.add-btn.added').forEach(b=>{b.textContent='+ Add';b.classList.remove('added');});
 }
 
@@ -1070,7 +1093,12 @@ function quickRegion(leadState, city) {
   runSearch();
 }
 
-window.addEventListener('load', () => { setTimeout(initInlineMap, 100); buildRegionList(); });
+window.addEventListener('load', () => {
+  setTimeout(initInlineMap, 100);
+  buildRegionList();
+  // Show persisted outreach count on load
+  updateStats([]);
+});
 
 async function searchAllUS() {
   if (searching) return;
