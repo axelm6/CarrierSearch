@@ -395,7 +395,19 @@
         <div class="grad-bar"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
           <div style="font-size:13px;font-weight:700;color:var(--text2);" id="otl">No carriers saved</div>
-          <div style="display:flex;gap:8px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div class="sel-wrap" style="min-width:200px;">
+              <select id="outreach-status-filter" onchange="renderOutreach()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:6px 28px 6px 10px;font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;appearance:none;outline:none;width:100%;cursor:pointer;">
+                <option value="all">All Statuses</option>
+                <option value="identified">🔍 Identified</option>
+                <option value="contacted">📞 Contacted</option>
+                <option value="docs-sent">📄 Documentation Sent</option>
+                <option value="under-review">🔎 Under Review</option>
+                <option value="onboarded">✅ Onboarded</option>
+                <option value="trusted">⭐ Trusted Partner</option>
+                <option value="do-not-use">🚫 Do Not Use / Inactive</option>
+              </select>
+            </div>
             <button class="btn btn-ghost" onclick="exportOutreach()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export CSV
             </button>
@@ -909,6 +921,15 @@ function renderOutreach(){
   }
   lbl.textContent=`${outreachList.length} carrier${outreachList.length!==1?'s':''} saved`;
 
+  const filterEl = document.getElementById('outreach-status-filter');
+  const activeFilter = filterEl ? filterEl.value : 'all';
+  const filtered = activeFilter === 'all' ? outreachList : outreachList.filter(c => (c.status||'identified') === activeFilter);
+
+  if (!filtered.length) {
+    list.innerHTML=`<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div><div class="st">No carriers match this status</div><div class="ss">Try a different filter or clear it to see all.</div></div>`;
+    return;
+  }
+
   const STATUSES = [
     { val: 'identified',   label: '🔍 Identified',              color: '#786EAF' },
     { val: 'contacted',    label: '📞 Contacted',               color: '#32AAE1' },
@@ -923,7 +944,7 @@ function renderOutreach(){
     return (STATUSES.find(s=>s.val===val)||STATUSES[0]).color;
   }
 
-  list.innerHTML=outreachList.map(c=>{
+  list.innerHTML=filtered.map(c=>{
     const status = c.status || 'identified';
     const color  = statusColor(status);
     const opts   = STATUSES.map(s=>`<option value="${s.val}" ${status===s.val?'selected':''}>${s.label}</option>`).join('');
