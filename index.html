@@ -1161,26 +1161,30 @@ function initInlineMap() {
               : `<strong>${fullName} (${code})</strong><br/>Click to search`;
           }, { sticky: true });
           layer.on({
-            mouseover: (e) => e.target.setStyle({ weight: 2, fillOpacity: 1, color: '#32AAE1' }),
-            mouseout:  (e) => window.inlineStatesLayer.resetStyle(e.target),
+            mouseover: (e) => {
+              if (selectedMapStates.has(code)) return; // don't override selected style
+              e.target.setStyle({ weight: 2, fillOpacity: 1, color: '#32AAE1' });
+            },
+            mouseout: (e) => {
+              if (selectedMapStates.has(code)) return; // keep selected style
+              window.inlineStatesLayer.resetStyle(e.target);
+            },
             click: async () => {
               if (searching) return;
 
               if (selectedMapStates.has(code)) {
-                // Deselect — remove this state
+                // Deselect — restore to default style
                 selectedMapStates.delete(code);
                 delete stateResultsCache[code];
-                layer.setStyle({ fillColor: colorForCount(null), weight: 1, color: '#ffffff', fillOpacity: 0.85 });
+                layer.setStyle({ fillColor: '#EBF5FB', weight: 1, color: '#ffffff', fillOpacity: 0.85 });
 
                 if (selectedMapStates.size === 0) {
-                  // Nothing left — clear everything
                   allResults = [];
                   document.getElementById('sel-state').value = '';
                   document.getElementById('results-area').innerHTML = `<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div class="st">Select a state to find carriers</div></div>`;
                   document.getElementById('pag-row').style.display = 'none';
                   updateStats([]);
                 } else {
-                  // Recompute allResults from remaining cached states
                   const seen = new Set();
                   allResults = Object.values(stateResultsCache).flat().filter(c => {
                     const d = String(c.dotNumber||''); if(seen.has(d)) return false; seen.add(d); return true;
@@ -1191,12 +1195,11 @@ function initInlineMap() {
                   document.getElementById('sel-state').value = [...selectedMapStates][0];
                 }
               } else {
-                // Select — fetch this state and add to cumulative
+                // Select — dark blue, consistent border
                 selectedMapStates.add(code);
-                layer.setStyle({ fillColor: '#E60080', fillOpacity: 0.75, weight: 2, color: '#E60080' });
+                layer.setStyle({ fillColor: '#1a5276', fillOpacity: 0.85, weight: 2, color: '#1a5276' });
                 document.getElementById('sel-state').value = code;
 
-                // Fetch if not cached
                 if (!stateResultsCache[code]) {
                   searching = true;
                   try {
@@ -1205,14 +1208,14 @@ function initInlineMap() {
                     const data = await r.json();
                     stateResultsCache[code] = data.content || [];
                     updateStateCount(code, stateResultsCache[code].length);
-                    layer.setStyle({ fillColor: '#E60080', fillOpacity: 0.75, weight: 2, color: '#E60080' });
+                    // Re-apply selected style after fetch (updateStateCount may reset it)
+                    layer.setStyle({ fillColor: '#1a5276', fillOpacity: 0.85, weight: 2, color: '#1a5276' });
                   } catch(e) {
                     stateResultsCache[code] = [];
                   }
                   searching = false;
                 }
 
-                // Merge into allResults
                 const seen = new Set(allResults.map(c => String(c.dotNumber||'')));
                 (stateResultsCache[code] || []).forEach(c => {
                   const d = String(c.dotNumber||''); if(!d||seen.has(d)) return; seen.add(d); allResults.push(c);
@@ -1233,7 +1236,12 @@ function refreshInlineMap() {
   if (!window.inlineStatesLayer) return;
   window.inlineStatesLayer.eachLayer(layer => {
     const code = STATE_ABBR[layer.feature.properties.name];
-    if (code) layer.setStyle({ fillColor: colorForCount(STATE_COUNTS[code]) });
+    if (!code) return;
+    if (selectedMapStates.has(code)) {
+      layer.setStyle({ fillColor: '#1a5276', fillOpacity: 0.85, weight: 2, color: '#1a5276' });
+    } else {
+      layer.setStyle({ fillColor: colorForCount(STATE_COUNTS[code]), fillOpacity: 0.85, weight: 1, color: '#ffffff' });
+    }
   });
 }
 
