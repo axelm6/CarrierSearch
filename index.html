@@ -486,7 +486,19 @@ const STATES = [
   ['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],['WI','Wisconsin'],['WY','Wyoming']
 ];
 
+// ── Persistence ──────────────────────────────────────────────────────
+function saveOutreach() {
+  try { localStorage.setItem('carriernet_outreach', JSON.stringify(outreachList)); } catch(e) {}
+}
+function loadOutreach() {
+  try {
+    const raw = localStorage.getItem('carriernet_outreach');
+    if (raw) outreachList = JSON.parse(raw);
+  } catch(e) { outreachList = []; }
+}
+
 let outreachList = [];
+loadOutreach();
 let allResults   = [];
 let searching    = false;
 
@@ -861,7 +873,8 @@ function addToOutreach(el) {
   } : el;
   if(!carrier || !carrier.dot) return;
   if(outreachList.find(c=>c.dot===carrier.dot)) return;
-  outreachList.push({...carrier,notes:'',addedAt:new Date().toLocaleDateString()});
+  outreachList.push({...carrier,notes:'',status:'identified',addedAt:new Date().toLocaleDateString()});
+  saveOutreach();
   const btn=document.getElementById(`btn-${carrier.dot}`);
   if(btn){btn.textContent='✓ Saved';btn.classList.add('added');}
   updOC(); updSP();
@@ -870,16 +883,17 @@ function addToOutreach(el) {
 }
 function removeOutreach(dot){
   outreachList=outreachList.filter(c=>c.dot!==dot);
-  updOC(); updSP(); renderOutreach();
+  saveOutreach(); updOC(); updSP(); renderOutreach();
   document.getElementById('so').textContent=outreachList.length;
   const btn=document.getElementById(`btn-${dot}`);
   if(btn){btn.textContent='+ Add';btn.classList.remove('added');}
 }
-function updateNotes(dot,val){const c=outreachList.find(c=>c.dot===dot);if(c)c.notes=val;}
+function updateNotes(dot,val){const c=outreachList.find(c=>c.dot===dot);if(c){c.notes=val;saveOutreach();}}
 function updateStatus(dot,sel){
   const c=outreachList.find(c=>c.dot===dot);
   if(!c)return;
   c.status=sel.value;
+  saveOutreach();
   const COLORS={'identified':'#786EAF','contacted':'#32AAE1','docs-sent':'#FAB43C','under-review':'#E09000','onboarded':'#3db55d','trusted':'#C8D23C','do-not-use':'#E60080'};
   const color=COLORS[sel.value]||'#786EAF';
   sel.style.borderColor=color;
@@ -954,7 +968,7 @@ function updSP(){
 function clearOutreach(){
   if(!outreachList.length)return;
   if(!confirm(`Remove all ${outreachList.length} carriers?`))return;
-  outreachList=[];updOC();updSP();renderOutreach();
+  outreachList=[];saveOutreach();updOC();updSP();renderOutreach();
   document.getElementById('so').textContent=0;
   document.querySelectorAll('.add-btn.added').forEach(b=>{b.textContent='+ Add';b.classList.remove('added');});
 }
