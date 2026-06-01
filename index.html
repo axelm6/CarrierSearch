@@ -934,23 +934,19 @@ function renderOutreach(){
         <div class="ometa"><span>DOT ${c.dot}</span><span>${c.city?h(c.city)+', ':''}${c.state}</span><span>${c.phone||'no phone'}</span><span>Added ${c.addedAt}</span></div>
       </div>
       <div class="oactions">
-        <div style="display:flex;gap:8px;align-items:stretch;height:60px;">
-          <div style="display:flex;flex-direction:column;gap:4px;min-width:180px;">
-            <select onchange="updateStatus('${c.dot}',this)" style="background:var(--surface2);border:2px solid ${color};color:${color};border-radius:var(--radius);padding:7px 10px;font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;appearance:none;outline:none;cursor:pointer;width:100%;height:100%;">
-              ${opts}
-            </select>
-          </div>
-          <div style="flex:1;">
-            <textarea class="onotes" placeholder="Notes…" onchange="updateNotes('${c.dot}',this.value)" style="height:100%;resize:none;">${h(c.notes||'')}</textarea>
-          </div>
-          <button class="btn btn-primary" style="padding:6px 12px;font-size:12px;justify-content:center;height:100%;white-space:nowrap;" onclick="openDetailByDot('${c.dot}')">
+        <div style="display:flex;gap:8px;align-items:center;height:36px;">
+          <select onchange="updateStatus('${c.dot}',this)" style="background:var(--surface2);border:2px solid ${color};color:${color};border-radius:var(--radius);padding:0 10px;font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;appearance:none;outline:none;cursor:pointer;min-width:180px;height:36px;">
+            ${opts}
+          </select>
+          <textarea class="onotes" placeholder="Notes…" onchange="updateNotes('${c.dot}',this.value)" style="height:36px;resize:none;flex:1;padding:8px 10px;line-height:1.2;">${h(c.notes||'')}</textarea>
+          <button class="btn btn-primary" style="padding:0 12px;font-size:12px;justify-content:center;height:36px;white-space:nowrap;flex-shrink:0;" onclick="openDetailByDot('${c.dot}')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             View Details
           </button>
-          <a href="https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${c.dot}" target="_blank" class="btn btn-ghost" style="padding:6px 10px;font-size:12px;height:100%;align-items:center;white-space:nowrap;">
+          <a href="https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${c.dot}" target="_blank" class="btn btn-ghost" style="padding:0 10px;font-size:12px;height:36px;align-items:center;white-space:nowrap;flex-shrink:0;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>SAFER
           </a>
-          <button class="rb" style="height:100%;aspect-ratio:1;" onclick="removeOutreach('${c.dot}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+          <button class="rb" style="height:36px;width:36px;flex-shrink:0;" onclick="removeOutreach('${c.dot}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
         </div>
       </div>
     </div>`;
