@@ -513,6 +513,7 @@ let outreachList = [];
 loadOutreach();
 let allResults   = [];
 let searching    = false;
+let selectedMapStates = new Set(); // tracks map-selected states
 
 // Build state select
 const stateSel = document.getElementById('sel-state');
@@ -537,6 +538,8 @@ async function runRegionSearch(states, regionLabel) {
   allResults = [];
   totalCarriersFound = 0;
   qcFilter = 'all';
+  selectedMapStates.clear();
+  refreshInlineMapSelection();
   const seen = new Set();
   const pgSz = parseInt(document.getElementById('page-size').value);
   document.getElementById('search-btn').disabled = true;
@@ -1476,27 +1479,51 @@ function initInlineMap() {
             mouseover: (e) => e.target.setStyle({ weight: 2, fillOpacity: 1, color: '#32AAE1' }),
             mouseout:  (e) => window.inlineStatesLayer.resetStyle(e.target),
             click: () => {
-              const sel = document.getElementById('sel-state');
-              if (sel.value === code) {
-                // Already selected — deselect and clear
-                sel.value = '';
+              // Toggle this state in/out of selection
+              if (selectedMapStates.has(code)) {
+                selectedMapStates.delete(code);
+              } else {
+                selectedMapStates.add(code);
+              }
+
+              refreshInlineMapSelection();
+
+              const states = [...selectedMapStates];
+
+              if (states.length === 0) {
+                // Nothing left selected — clear results only
+                document.getElementById('sel-state').value = '';
                 document.getElementById('inp-city').value = '';
-                allResults = [];
-                qcFilter = 'all';
+                allResults = []; qcFilter = 'all';
                 updateStats([]);
                 document.getElementById('results-area').innerHTML = '';
                 document.getElementById('pag-row').style.display = 'none';
-                clearMapHighlights();
-              } else {
-                sel.value = code;
+              } else if (states.length === 1) {
+                document.getElementById('sel-state').value = states[0];
                 document.getElementById('inp-city').value = '';
                 runSearch();
+              } else {
+                document.getElementById('sel-state').value = states[0];
+                runRegionSearch(states, states.join(', '));
               }
             },
           });
         }
       }).addTo(window.inlineLeafletMap);
     });
+}
+
+function refreshInlineMapSelection() {
+  if (!window.inlineStatesLayer) return;
+  window.inlineStatesLayer.eachLayer(layer => {
+    const code = STATE_ABBR[layer.feature.properties.name];
+    if (!code) return;
+    if (selectedMapStates.has(code)) {
+      layer.setStyle({ fillColor: 'var(--pink, #E60080)', fillOpacity: 0.75, weight: 2, color: '#E60080' });
+    } else {
+      layer.setStyle({ fillColor: colorForCount(STATE_COUNTS[code]), fillOpacity: 0.85, weight: 1, color: '#ffffff' });
+    }
+  });
 }
 
 function refreshInlineMap() {
