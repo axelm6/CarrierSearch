@@ -789,7 +789,7 @@ function renderTable(carriers, page, pgSz, filteredTotal) {
       <td style="width:150px;" class="td-sm">${h(pCity)}${pCity?', ':''}${pSt}</td>
       <td style="width:130px;" class="td-mono td-sm">${phone||'—'}</td>
       <td style="width:120px;">${mcAuthCell}</td>
-      <td style="width:76px;text-align:right;"><button class="add-btn ${isSaved?'added':''}" id="btn-${dot}" onclick="addToOutreach(this)" data-dot="${dot}" data-name="${h(name)}" data-city="${h(pCity)}" data-state="${pSt}" data-phone="${phone}">${isSaved?'✓ Saved':'+ Add'}</button></td>
+      <td style="width:76px;text-align:right;"><button class="add-btn ${isSaved?'added':''}" id="btn-${dot}" onclick="addToOutreach(this)" data-dot="${dot}" data-name="${h(name)}" data-city="${h(pCity)}" data-state="${pSt}" data-phone="${phone}" data-mc="${c.docketNumber||''}">${isSaved?'✓ Saved':'+ Add'}</button></td>
     </tr>`;
   }).join('');
 
@@ -856,7 +856,8 @@ function addToOutreach(el) {
     name:  el.dataset.name,
     city:  el.dataset.city,
     state: el.dataset.state,
-    phone: el.dataset.phone
+    phone: el.dataset.phone,
+    mc:    el.dataset.mc || ''
   } : el;
   if(!carrier || !carrier.dot) return;
   if(outreachList.find(c=>c.dot===carrier.dot)) return;
@@ -892,6 +893,10 @@ function renderOutreach(){
       </div>
       <div class="oactions">
         <textarea class="onotes" placeholder="Notes…" onchange="updateNotes('${c.dot}',this.value)">${h(c.notes||'')}</textarea>
+        <button class="btn btn-primary" style="padding:6px 12px;font-size:12px;justify-content:center;" onclick="openDetailByDot('${c.dot}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          View Details
+        </button>
         <a href="https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${c.dot}" target="_blank" class="btn btn-ghost" style="padding:6px 10px;font-size:12px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>SAFER
         </a>
@@ -1059,9 +1064,13 @@ document.getElementById('name-kw').addEventListener('keydown',e=>{if(e.key==='En
 let currentDetailCarrier = null;
 
 function openDetailByDot(dot) {
-  const carrier = allResults.find(c => String(c.dotNumber) === String(dot));
+  // Look in search results first, fall back to outreach list
+  let carrier = allResults.find(c => String(c.dotNumber) === String(dot));
+  if (!carrier) {
+    const oc = outreachList.find(c => String(c.dot) === String(dot));
+    if (oc) carrier = { dotNumber: oc.dot, legalName: oc.name, phyCity: oc.city, phyState: oc.state, telephone: oc.phone, docketNumber: oc.mc || '' };
+  }
   if (!carrier) return;
-  // Convert to the format openDetail expects
   openDetail({
     dotNumber: String(carrier.dotNumber || ''),
     legalName: carrier.legalName || carrier.dbaName || '—',
