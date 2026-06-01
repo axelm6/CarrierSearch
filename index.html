@@ -917,10 +917,11 @@ function clearOutreach(){
 // Export
 function exportResults(){
   if(!allResults.length){showToast('No results to export');return;}
-  const rows=[['DOT#','Legal Name','City','State','Phone','MC#','Authority'],
-    ...allResults.map(c=>[c.dotNumber||'',e(c.legalName||c.dbaName||''),e(c.phyCity||''),c.phyState||'',fmt(c.telephone||c.phone||''),c.docketNumber||'',c.commonAuthorityStatus||''])];
+  const authLabel = s => s==='A'?'Active':s==='I'?'Inactive':s==='P'?'Pending':s||'Unknown';
+  const rows=[['DOT#','Legal Name','City','State','Phone','MC#','MC Authority'],
+    ...getFilteredResults().map(c=>[c.dotNumber||'',e(c.legalName||c.dbaName||''),e(c.phyCity||''),c.phyState||'',fmt(c.telephone||c.phone||''),c.docketNumber?'MC-'+c.docketNumber:'',authLabel(c.mcAuthorityStatus)])];
   dlCSV(rows,`carriers_${stateSel.value}_${today()}.csv`);
-  showToast(`Exported ${allResults.length} carriers`);
+  showToast(`Exported ${rows.length-1} carriers`);
 }
 function exportOutreach(){
   if(!outreachList.length){showToast('Outreach list is empty');return;}
