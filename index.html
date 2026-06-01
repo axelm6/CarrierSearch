@@ -532,10 +532,10 @@ function showPanel(name, btn) {
 }
 
 async function runRegionSearch(states, regionLabel) {
-
   if (searching) return;
   searching = true;
   allResults = [];
+  totalCarriersFound = 0;
   qcFilter = 'all';
   const seen = new Set();
   const pgSz = parseInt(document.getElementById('page-size').value);
@@ -558,23 +558,27 @@ async function runRegionSearch(states, regionLabel) {
       const entityType = document.getElementById('auth-filter')?.value || 'carriers';
       const r = await fetch(`/api/carriers?state=${st}&limit=2000&entityType=${entityType}`);
       const data = await r.json();
-      (data.content || []).forEach(c => {
+      const items = data.content || [];
+      totalCarriersFound += data.total || items.length;
+      items.forEach(c => {
         const dot = String(c.dotNumber || '');
         if (!dot || seen.has(dot)) return;
         seen.add(dot); allResults.push(c);
       });
-      updateStateCount(st, (data.content || []).length);
+      updateStateCount(st, items.length);
     } catch(e) {}
     done++;
     pb.style.width = Math.round((done/states.length)*100) + '%';
+    // Update KPIs live as each state loads
+    updateStats(allResults);
     const ls = document.getElementById('ls');
-    if (ls) ls.textContent = `${allResults.length} carriers · ${done}/${states.length} states loaded`;
+    if (ls) ls.textContent = `${totalCarriersFound.toLocaleString()} carriers · ${done}/${states.length} states loaded`;
   }));
 
   allResults.sort((a,b) => (a.phyState||'').localeCompare(b.phyState||'') || (a.legalName||'').localeCompare(b.legalName||''));
   updateStats(allResults);
   renderPage(0, pgSz);
-  document.getElementById('s-status').textContent = `✓ ${allResults.length} carriers in ${regionLabel}`;
+  document.getElementById('s-status').textContent = `✓ ${totalCarriersFound.toLocaleString()} carriers in ${regionLabel}`;
   pw.style.display = 'none';
   document.getElementById('search-btn').disabled = false;
   document.getElementById('all-us-btn').disabled = false;
@@ -601,7 +605,7 @@ async function runSearch(offsetStart) {
   const pgSz   = parseInt(document.getElementById('page-size').value);
   offsetStart  = offsetStart || 0;
 
-  if (offsetStart === 0) { allResults = []; qcFilter = 'all'; }
+  if (offsetStart === 0) { allResults = []; totalCarriersFound = 0; qcFilter = 'all'; }
   const seen = new Set(allResults.map(c => String(c.dotNumber)));
 
   document.getElementById('search-btn').disabled = true;
@@ -636,6 +640,7 @@ async function runSearch(offsetStart) {
     if (data.error) throw new Error(data.error);
 
     const items = data.content || [];
+    totalCarriersFound = data.total || items.length;
 
     for (const c of items) {
       const dot = String(c.dotNumber || '');
@@ -849,27 +854,27 @@ function renderTable(carriers, page, pgSz, filteredTotal) {
   pRow.innerHTML = btns;
 }
 
-function updateStats(c) {
-  const cities = new Set(c.map(x => x.phyCity).filter(Boolean)).size;
-  document.getElementById('sf').textContent = c.length ? c.length.toLocaleString() : '—';
-  document.getElementById('sc').textContent = cities  ? cities.toLocaleString()   : '—';
+let totalCarriersFound = 0; // true total from API, not capped by allResults
 
-  // Outreach count: filter to current search context if a search is active
-  const currentState  = stateSel.value;
-  const currentCity   = (document.getElementById('inp-city') ? document.getElementById('inp-city').value.trim() : '').toLowerCase();
+function updateStats(c) {
+  // Carriers: use true total if available, else allResults length
+  const displayTotal = totalCarriersFound > 0 ? totalCarriersFound : (c.length || 0);
+  const cities = new Set(c.map(x => x.phyCity).filter(Boolean)).size;
+  document.getElementById('sf').textContent = displayTotal ? displayTotal.toLocaleString() : '—';
+  document.getElementById('sc').textContent = cities       ? cities.toLocaleString()       : '—';
+
+  // Outreach count filtered to current search context
+  const currentState = stateSel.value;
+  const currentCity  = (document.getElementById('inp-city') ? document.getElementById('inp-city').value.trim() : '').toLowerCase();
   let outreachCount;
-  if (!currentState) {
-    // No search active — show total outreach list
+  if (!currentState && totalCarriersFound === 0) {
     outreachCount = outreachList.length;
   } else {
-    // Filter outreach to match current state(s) selection
     const activeStates = new Set();
-    // Check region checkboxes
     document.querySelectorAll('.region-cb:checked').forEach(cb => {
       (cb.dataset.states || '').split(',').forEach(s => activeStates.add(s.trim()));
     });
     if (currentState) activeStates.add(currentState.toUpperCase());
-
     outreachCount = outreachList.filter(o => {
       const stateMatch = activeStates.size === 0 || activeStates.has((o.state || '').toUpperCase());
       const cityMatch  = !currentCity || (o.city || '').toLowerCase().includes(currentCity);
@@ -1033,7 +1038,7 @@ function today(){return new Date().toISOString().split('T')[0];}
 
 function clearSearch(){
   stateSel.value='';document.getElementById('inp-city').value='';
-  document.getElementById('name-kw').value='';allResults=[];
+  document.getElementById('name-kw').value='';allResults=[];totalCarriersFound=0;
   document.getElementById('pag-row').style.display='none';
   document.getElementById('s-status').textContent='';
   document.getElementById('results-area').innerHTML=`<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div class="st">Select a state to find carriers</div><div class="ss">Pick any state from the dropdown above.</div></div>`;
@@ -1471,9 +1476,22 @@ function initInlineMap() {
             mouseover: (e) => e.target.setStyle({ weight: 2, fillOpacity: 1, color: '#32AAE1' }),
             mouseout:  (e) => window.inlineStatesLayer.resetStyle(e.target),
             click: () => {
-              document.getElementById('sel-state').value = code;
-              document.getElementById('inp-city').value = '';
-              runSearch();
+              const sel = document.getElementById('sel-state');
+              if (sel.value === code) {
+                // Already selected — deselect and clear
+                sel.value = '';
+                document.getElementById('inp-city').value = '';
+                allResults = [];
+                qcFilter = 'all';
+                updateStats([]);
+                document.getElementById('results-area').innerHTML = '';
+                document.getElementById('pag-row').style.display = 'none';
+                clearMapHighlights();
+              } else {
+                sel.value = code;
+                document.getElementById('inp-city').value = '';
+                runSearch();
+              }
             },
           });
         }
