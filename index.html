@@ -198,35 +198,6 @@
     font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 700; color: #2c3e50;
     padding: 0; pointer-events: none;
   }
-  /* ── Carrier Qualification Scorecard ── */
-  .qual-card { background: linear-gradient(135deg, rgba(74,154,85,0.04) 0%, rgba(50,170,225,0.04) 100%); border: 1px solid rgba(74,154,85,0.18); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 20px; }
-  .qual-title { font-size: 9px; font-family: 'DM Mono', monospace; letter-spacing: 0.14em; color: var(--text3); text-transform: uppercase; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
-  .qual-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); gap: 10px; }
-  .qual-row:last-child { border-bottom: none; }
-  .qual-label { font-size: 11px; color: var(--text2); font-weight: 700; }
-  .qual-dot { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 700; }
-  .qdot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 6px currentColor; }
-  .qdot-green  { background: #3db55d; color: #3db55d; }
-  .qdot-amber  { background: var(--orange); color: var(--orange); }
-  .qdot-red    { background: var(--red); color: var(--red); }
-  .qdot-gray   { background: var(--text3); color: var(--text3); box-shadow: none; }
-  .qual-good   { color: #3db55d; }
-  .qual-warn   { color: var(--amber); }
-  .qual-bad    { color: var(--red); }
-  .qual-unk    { color: var(--text3); }
-  .qual-loading { display: inline-block; width: 11px; height: 11px; border: 2px solid var(--surface3); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.7s linear infinite; }
-  .qual-verdict { margin-top: 10px; padding: 8px 12px; border-radius: var(--radius); font-size: 11px; font-weight: 800; font-family: 'DM Mono', monospace; text-align: center; letter-spacing: 0.05em; }
-  .qual-verdict-pass { background: var(--green-bg); color: var(--green); border: 1px solid rgba(74,154,85,0.25); }
-  .qual-verdict-warn { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(176,122,16,0.25); }
-  .qual-verdict-fail { background: var(--red-bg); color: var(--red); border: 1px solid rgba(192,53,53,0.2); }
-  .qual-verdict-unk  { background: var(--surface2); color: var(--text3); border: 1px solid var(--border); }
-  .btn-freightguard { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: var(--radius); background: #1a3a5c; color: #fff; border: none; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none; width: 100%; justify-content: center; transition: background 0.15s; margin-top: 8px; }
-  .btn-freightguard:hover { background: #142d47; }
-  .btn-freightguard svg { width: 14px; height: 14px; flex-shrink: 0; }
-  .copy-btn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--border2); background: transparent; cursor: pointer; color: var(--text3); margin-left: 6px; vertical-align: middle; transition: all 0.15s; flex-shrink: 0; padding: 0; }
-  .copy-btn:hover { background: var(--accent-light); border-color: var(--blue); color: var(--blue); }
-  .copy-btn.copied { background: var(--green-bg); border-color: var(--green); color: var(--green); }
-  .copy-btn svg { width: 11px; height: 11px; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -395,19 +366,7 @@
         <div class="grad-bar"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
           <div style="font-size:13px;font-weight:700;color:var(--text2);" id="otl">No carriers saved</div>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <div class="sel-wrap" style="min-width:200px;">
-              <select id="outreach-status-filter" onchange="renderOutreach()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:6px 28px 6px 10px;font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;appearance:none;outline:none;width:100%;cursor:pointer;">
-                <option value="all">All Statuses</option>
-                <option value="identified">🔍 Identified</option>
-                <option value="contacted">📞 Contacted</option>
-                <option value="docs-sent">📄 Documentation Sent</option>
-                <option value="under-review">🔎 Under Review</option>
-                <option value="onboarded">✅ Onboarded</option>
-                <option value="trusted">⭐ Trusted Partner</option>
-                <option value="do-not-use">🚫 Do Not Use / Inactive</option>
-              </select>
-            </div>
+          <div style="display:flex;gap:8px;">
             <button class="btn btn-ghost" onclick="exportOutreach()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export CSV
             </button>
@@ -446,14 +405,14 @@
   <div class="detail-body" id="dp-body">
     <div class="detail-loading"><div class="detail-spinner"></div>Loading carrier details…</div>
   </div>
-  <div class="detail-actions" style="flex-direction:column;gap:8px;">
-    <button id="dp-add-btn" class="btn btn-primary" style="width:100%;justify-content:center;font-size:13px;" onclick="addFromPanel()">
+  <div class="detail-actions">
+    <a id="dp-safer-link" href="#" target="_blank" class="btn btn-ghost" style="flex:1;justify-content:center;font-size:12px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      View on SAFER
+    </a>
+    <button id="dp-add-btn" class="btn btn-primary" style="flex:1;justify-content:center;font-size:12px;" onclick="addFromPanel()">
       + Add to Outreach
     </button>
-    <a id="dp-safer-link" href="#" target="_blank" class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-      View Full SAFER Profile
-    </a>
   </div>
 </div>
 
@@ -498,21 +457,11 @@ const STATES = [
   ['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],['WI','Wisconsin'],['WY','Wyoming']
 ];
 
-// ── Persistence ──────────────────────────────────────────────────────
-function saveOutreach() {
-  try { localStorage.setItem('carriernet_outreach', JSON.stringify(outreachList)); } catch(e) {}
-}
-function loadOutreach() {
-  try {
-    const raw = localStorage.getItem('carriernet_outreach');
-    if (raw) outreachList = JSON.parse(raw);
-  } catch(e) { outreachList = []; }
-}
-
 let outreachList = [];
-loadOutreach();
 let allResults   = [];
 let searching    = false;
+let selectedMapStates = new Set();  // states toggled on the map
+let stateResultsCache = {};         // code -> carriers[], for accumulation
 
 // Build state select
 const stateSel = document.getElementById('sel-state');
@@ -536,7 +485,6 @@ async function runRegionSearch(states, regionLabel) {
   if (searching) return;
   searching = true;
   allResults = [];
-  qcFilter = 'all';
   const seen = new Set();
   const pgSz = parseInt(document.getElementById('page-size').value);
   document.getElementById('search-btn').disabled = true;
@@ -601,7 +549,7 @@ async function runSearch(offsetStart) {
   const pgSz   = parseInt(document.getElementById('page-size').value);
   offsetStart  = offsetStart || 0;
 
-  if (offsetStart === 0) { allResults = []; qcFilter = 'all'; }
+  if (offsetStart === 0) { allResults = []; selectedMapStates.clear(); stateResultsCache = {}; }
   const seen = new Set(allResults.map(c => String(c.dotNumber)));
 
   document.getElementById('search-btn').disabled = true;
@@ -693,143 +641,58 @@ function loadMore(offset) {
   runSearch(offset);
 }
 
-// QC filter state
-let qcFilter = 'all';
-
-function applyQcFilter(val) {
-  qcFilter = val;
-  const pgSz = parseInt(document.getElementById('page-size').value);
-  renderPage(0, pgSz);
-}
-
-function getFilteredResults() {
-  if (qcFilter === 'all') return allResults;
-  return allResults.filter(c => {
-
-    // MC authority NOT active — census docket status is not 'A'
-    // This is the same data Carrier411 uses for its authority check
-    if (qcFilter === 'mc-not-active') {
-      const s = (c.mcAuthorityStatus || '').toUpperCase();
-      return s !== 'A';
-    }
-
-    // MC authority confirmed active
-    if (qcFilter === 'mc-active') {
-      const s = (c.mcAuthorityStatus || '').toUpperCase();
-      return s === 'A';
-    }
-
-    return true;
-  });
-}
-
-function qcFilterBar() {
-  const opts = [
-    { val: 'all',          label: 'All carriers' },
-    { val: 'mc-active',    label: '✅ MC Authority — Active' },
-    { val: 'mc-not-active',label: '❌ MC Authority — Not Active' },
-  ];
-  const active = qcFilter !== 'all';
-  return `<div style="display:flex;align-items:center;gap:6px;">
-    <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:0.08em;white-space:nowrap;">MC AUTHORITY</span>
-    <div class="sel-wrap" style="min-width:210px;">
-      <select onchange="applyQcFilter(this.value)" style="background:var(--surface2);border:1px solid ${active?'var(--pink)':'var(--border)'};color:${active?'var(--pink)':'var(--text)'};border-radius:var(--radius);padding:6px 28px 6px 10px;font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;appearance:none;outline:none;width:100%;cursor:pointer;">
-        ${opts.map(o => `<option value="${o.val}" ${qcFilter===o.val?'selected':''}>${o.label}</option>`).join('')}
-      </select>
-    </div>
-  </div>`;
-}
-
 function renderPage(page, pgSz) {
-  const filtered = getFilteredResults();
-  const slice = filtered.slice(page * pgSz, (page + 1) * pgSz);
-  renderTable(slice, page, pgSz, filtered.length);
+  const slice = allResults.slice(page * pgSz, (page + 1) * pgSz);
+  renderTable(slice, page, pgSz);
 }
 
-function renderTable(carriers, page, pgSz, filteredTotal) {
+function renderTable(carriers, page, pgSz) {
   const area  = document.getElementById('results-area');
   const state = stateSel.value;
   const city  = document.getElementById('inp-city').value.trim();
-  const total = filteredTotal !== undefined ? filteredTotal : allResults.length;
+  const total = allResults.length;
 
-  if (!allResults.length) {
+  if (!total) {
     area.innerHTML = `<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div><div class="st">No carriers found in ${state}${city?' · '+h(city):''}</div><div class="ss">Try removing the city filter, or set Authority Status to "All".</div></div>`;
-    document.getElementById('pag-row').style.display = 'none';
-    return;
-  }
-
-  if (!carriers.length) {
-    area.innerHTML = `
-      <div class="results-hdr">${qcFilterBar()}</div>
-      <div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
-      <div class="st">No carriers match this filter</div>
-      <div class="ss">Try a different QC filter or clear it to see all results.</div></div>`;
     document.getElementById('pag-row').style.display = 'none';
     return;
   }
 
   const saved = new Set(outreachList.map(c => c.dot));
   const s = page * pgSz + 1, e = Math.min(s + pgSz - 1, total);
-  const label = city ? `${state} · ${h(city)}` : (state || 'all states');
-  const filterNote = qcFilter !== 'all' ? ` <span style="color:var(--amber);font-weight:800;">(filtered: ${total} of ${allResults.length})</span>` : ``;
+  const label = city ? `${state} · ${h(city)}` : state;
 
   const rows = carriers.map(c => {
-    const dot      = String(c.dotNumber || c.dot || '');
-    const name     = c.legalName || c.dbaName || c.name || '—';
-    const pCity    = c.phyCity   || '';
-    const pSt      = c.phyState  || '';
-    const phone    = fmt(c.telephone || c.phone || '');
-    const mc       = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
-    const mcSt     = (c.mcAuthorityStatus || '').toUpperCase();
-    const mcActive = mcSt === 'A';
-    const mcPend   = mcSt === 'P';
-
-    // Single MC Authority cell — MC number + status badge in one column
-    let mcAuthCell;
-    if (!mc) {
-      mcAuthCell = `<span style="color:var(--text3);font-size:12px;">—</span>`;
-    } else if (mcActive) {
-      mcAuthCell = `<div style="display:flex;flex-direction:column;gap:2px;">
-        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);">MC-${mc}</span>
-        <span class="badge badge-active" style="width:fit-content;">Active</span>
-      </div>`;
-    } else if (mcPend) {
-      mcAuthCell = `<div style="display:flex;flex-direction:column;gap:2px;">
-        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--amber);">MC-${mc}</span>
-        <span class="badge badge-pending" style="width:fit-content;">Pending</span>
-      </div>`;
-    } else {
-      mcAuthCell = `<div style="display:flex;flex-direction:column;gap:2px;">
-        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--red);">MC-${mc}</span>
-        <span class="badge badge-inactive" style="width:fit-content;">Inactive</span>
-      </div>`;
-    }
-
+    const dot   = String(c.dotNumber || c.dot || '');
+    const name  = c.legalName || c.dbaName || c.name || '—';
+    const pCity = c.phyCity   || '';
+    const pSt   = c.phyState  || '';
+    const phone = fmt(c.telephone || c.phone || '');
+    const mc    = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
+    const { cls, lbl } = bdg(c.commonAuthorityStatus, c.allowedToOperate, c.statusCode);
     const isSaved = saved.has(dot);
     const safer = `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${dot}`;
-    return `<tr onclick="openDetailByDot('${dot}')" style="cursor:pointer;${!mcActive&&mc?'background:rgba(192,53,53,0.03);':''}">
+    return `<tr onclick="openDetailByDot('${dot}')" style="cursor:pointer;">
       <td style="width:90px;"><a class="dot-link" href="${safer}" target="_blank" onclick="event.stopPropagation()">${dot}</a></td>
       <td style="width:auto;font-weight:700;">${h(name)}</td>
       <td style="width:150px;" class="td-sm">${h(pCity)}${pCity?', ':''}${pSt}</td>
       <td style="width:130px;" class="td-mono td-sm">${phone||'—'}</td>
-      <td style="width:120px;">${mcAuthCell}</td>
-      <td style="width:76px;text-align:right;"><button class="add-btn ${isSaved?'added':''}" id="btn-${dot}" onclick="addToOutreach(this)" data-dot="${dot}" data-name="${h(name)}" data-city="${h(pCity)}" data-state="${pSt}" data-phone="${phone}" data-mc="${c.docketNumber||''}">${isSaved?'✓ Saved':'+ Add'}</button></td>
+      <td style="width:90px;" class="td-mono td-sm">${mc ? 'MC-'+mc : '—'}</td>
+      <td style="width:90px;"><span class="badge badge-${cls}">${lbl}</span></td>
+      <td style="width:76px;text-align:right;"><button class="add-btn ${isSaved?'added':''}" id="btn-${dot}" onclick="addToOutreach(this)" data-dot="${dot}" data-name="${h(name)}" data-city="${h(pCity)}" data-state="${pSt}" data-phone="${phone}">${isSaved?'✓ Saved':'+ Add'}</button></td>
     </tr>`;
   }).join('');
 
   area.innerHTML = `
     <div class="results-hdr">
-      <div class="results-count">Showing <strong>${s}–${e}</strong> of <strong>${total}</strong> carriers in <strong>${label}</strong>${filterNote}</div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        ${qcFilterBar()}
-        <button class="btn btn-ghost" style="font-size:12px;padding:5px 12px;" onclick="exportResults()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export ${qcFilter !== 'all' ? total : allResults.length}
-        </button>
-      </div>
+      <div class="results-count">Showing <strong>${s}–${e}</strong> of <strong>${total}</strong> carriers in <strong>${label}</strong></div>
+      <button class="btn btn-ghost" style="font-size:12px;padding:5px 12px;" onclick="exportResults()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export all ${total}
+      </button>
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>DOT #</th><th>Legal name</th><th>Location</th><th>Phone</th><th>MC Authority</th><th></th></tr></thead>
+        <thead><tr><th>DOT #</th><th>Legal name</th><th>Location</th><th>Phone</th><th>MC #</th><th>Authority</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
@@ -850,9 +713,16 @@ function renderTable(carriers, page, pgSz, filteredTotal) {
 }
 
 function updateStats(c) {
-  const cities = new Set(c.map(x=>x.phyCity).filter(Boolean)).size;
-  document.getElementById('sf').textContent = c.length||'—';
-  document.getElementById('sc').textContent = cities||'—';
+  // If map states are selected, show cumulative across all of them
+  let display = c;
+  if (selectedMapStates.size > 1) {
+    const all = Object.values(stateResultsCache).flat();
+    const seen = new Set();
+    display = all.filter(x => { const d = String(x.dotNumber||''); if(seen.has(d)) return false; seen.add(d); return true; });
+  }
+  const cities = new Set(display.map(x=>x.phyCity).filter(Boolean)).size;
+  document.getElementById('sf').textContent = display.length || '—';
+  document.getElementById('sc').textContent = cities || '—';
   document.getElementById('so').textContent = outreachList.length;
 }
 
@@ -880,13 +750,11 @@ function addToOutreach(el) {
     name:  el.dataset.name,
     city:  el.dataset.city,
     state: el.dataset.state,
-    phone: el.dataset.phone,
-    mc:    el.dataset.mc || ''
+    phone: el.dataset.phone
   } : el;
   if(!carrier || !carrier.dot) return;
   if(outreachList.find(c=>c.dot===carrier.dot)) return;
-  outreachList.push({...carrier,notes:'',status:'identified',addedAt:new Date().toLocaleDateString()});
-  saveOutreach();
+  outreachList.push({...carrier,notes:'',addedAt:new Date().toLocaleDateString()});
   const btn=document.getElementById(`btn-${carrier.dot}`);
   if(btn){btn.textContent='✓ Saved';btn.classList.add('added');}
   updOC(); updSP();
@@ -895,22 +763,12 @@ function addToOutreach(el) {
 }
 function removeOutreach(dot){
   outreachList=outreachList.filter(c=>c.dot!==dot);
-  saveOutreach(); updOC(); updSP(); renderOutreach();
+  updOC(); updSP(); renderOutreach();
   document.getElementById('so').textContent=outreachList.length;
   const btn=document.getElementById(`btn-${dot}`);
   if(btn){btn.textContent='+ Add';btn.classList.remove('added');}
 }
-function updateNotes(dot,val){const c=outreachList.find(c=>c.dot===dot);if(c){c.notes=val;saveOutreach();}}
-function updateStatus(dot,sel){
-  const c=outreachList.find(c=>c.dot===dot);
-  if(!c)return;
-  c.status=sel.value;
-  saveOutreach();
-  const COLORS={'identified':'#786EAF','contacted':'#32AAE1','docs-sent':'#FAB43C','under-review':'#E09000','onboarded':'#3db55d','trusted':'#C8D23C','do-not-use':'#E60080'};
-  const color=COLORS[sel.value]||'#786EAF';
-  sel.style.borderColor=color;
-  sel.style.color=color;
-}
+function updateNotes(dot,val){const c=outreachList.find(c=>c.dot===dot);if(c)c.notes=val;}
 function renderOutreach(){
   const list=document.getElementById('outreach-list');
   const lbl=document.getElementById('otl');
@@ -920,58 +778,20 @@ function renderOutreach(){
     return;
   }
   lbl.textContent=`${outreachList.length} carrier${outreachList.length!==1?'s':''} saved`;
-
-  const filterEl = document.getElementById('outreach-status-filter');
-  const activeFilter = filterEl ? filterEl.value : 'all';
-  const filtered = activeFilter === 'all' ? outreachList : outreachList.filter(c => (c.status||'identified') === activeFilter);
-
-  if (!filtered.length) {
-    list.innerHTML=`<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div><div class="st">No carriers match this status</div><div class="ss">Try a different filter or clear it to see all.</div></div>`;
-    return;
-  }
-
-  const STATUSES = [
-    { val: 'identified',   label: '🔍 Identified',              color: '#786EAF' },
-    { val: 'contacted',    label: '📞 Contacted',               color: '#32AAE1' },
-    { val: 'docs-sent',    label: '📄 Documentation Sent',      color: '#FAB43C' },
-    { val: 'under-review', label: '🔎 Under Review',            color: '#E09000' },
-    { val: 'onboarded',    label: '✅ Onboarded',               color: '#3db55d' },
-    { val: 'trusted',      label: '⭐ Trusted Partner',         color: '#C8D23C' },
-    { val: 'do-not-use',   label: '🚫 Do Not Use / Inactive',   color: '#E60080' },
-  ];
-
-  function statusColor(val) {
-    return (STATUSES.find(s=>s.val===val)||STATUSES[0]).color;
-  }
-
-  list.innerHTML=filtered.map(c=>{
-    const status = c.status || 'identified';
-    const color  = statusColor(status);
-    const opts   = STATUSES.map(s=>`<option value="${s.val}" ${status===s.val?'selected':''}>${s.label}</option>`).join('');
-    return `
+  list.innerHTML=outreachList.map(c=>`
     <div class="ocard">
       <div style="flex:1;min-width:0;">
         <div class="oname">${h(c.name)}</div>
         <div class="ometa"><span>DOT ${c.dot}</span><span>${c.city?h(c.city)+', ':''}${c.state}</span><span>${c.phone||'no phone'}</span><span>Added ${c.addedAt}</span></div>
       </div>
       <div class="oactions">
-        <div style="display:flex;gap:8px;align-items:center;height:36px;">
-          <select onchange="updateStatus('${c.dot}',this)" style="background:var(--surface2);border:2px solid ${color};color:${color};border-radius:var(--radius);padding:0 10px;font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;appearance:none;outline:none;cursor:pointer;min-width:180px;height:36px;">
-            ${opts}
-          </select>
-          <textarea class="onotes" placeholder="Notes…" onchange="updateNotes('${c.dot}',this.value)" style="height:36px;resize:none;flex:1;padding:8px 10px;line-height:1.2;">${h(c.notes||'')}</textarea>
-          <button class="btn btn-primary" style="padding:0 12px;font-size:12px;justify-content:center;height:36px;white-space:nowrap;flex-shrink:0;" onclick="openDetailByDot('${c.dot}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            View Details
-          </button>
-          <a href="https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${c.dot}" target="_blank" class="btn btn-ghost" style="padding:0 10px;font-size:12px;height:36px;align-items:center;white-space:nowrap;flex-shrink:0;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>SAFER
-          </a>
-          <button class="rb" style="height:36px;width:36px;flex-shrink:0;" onclick="removeOutreach('${c.dot}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
-        </div>
+        <textarea class="onotes" placeholder="Notes…" onchange="updateNotes('${c.dot}',this.value)">${h(c.notes||'')}</textarea>
+        <a href="https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${c.dot}" target="_blank" class="btn btn-ghost" style="padding:6px 10px;font-size:12px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>SAFER
+        </a>
+        <button class="rb" onclick="removeOutreach('${c.dot}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
       </div>
-    </div>`;
-  }).join('');
+    </div>`).join('');
 }
 function updOC(){const b=document.getElementById('nbadge');b.textContent=outreachList.length;b.classList.toggle('show',outreachList.length>0);}
 function updSP(){
@@ -983,7 +803,7 @@ function updSP(){
 function clearOutreach(){
   if(!outreachList.length)return;
   if(!confirm(`Remove all ${outreachList.length} carriers?`))return;
-  outreachList=[];saveOutreach();updOC();updSP();renderOutreach();
+  outreachList=[];updOC();updSP();renderOutreach();
   document.getElementById('so').textContent=0;
   document.querySelectorAll('.add-btn.added').forEach(b=>{b.textContent='+ Add';b.classList.remove('added');});
 }
@@ -991,16 +811,15 @@ function clearOutreach(){
 // Export
 function exportResults(){
   if(!allResults.length){showToast('No results to export');return;}
-  const authLabel = s => s==='A'?'Active':s==='I'?'Inactive':s==='P'?'Pending':s||'Unknown';
-  const rows=[['DOT#','Legal Name','City','State','Phone','MC#','MC Authority'],
-    ...getFilteredResults().map(c=>[c.dotNumber||'',e(c.legalName||c.dbaName||''),e(c.phyCity||''),c.phyState||'',fmt(c.telephone||c.phone||''),c.docketNumber?'MC-'+c.docketNumber:'',authLabel(c.mcAuthorityStatus)])];
+  const rows=[['DOT#','Legal Name','City','State','Phone','MC#','Authority'],
+    ...allResults.map(c=>[c.dotNumber||'',e(c.legalName||c.dbaName||''),e(c.phyCity||''),c.phyState||'',fmt(c.telephone||c.phone||''),c.docketNumber||'',c.commonAuthorityStatus||''])];
   dlCSV(rows,`carriers_${stateSel.value}_${today()}.csv`);
-  showToast(`Exported ${rows.length-1} carriers`);
+  showToast(`Exported ${allResults.length} carriers`);
 }
 function exportOutreach(){
   if(!outreachList.length){showToast('Outreach list is empty');return;}
-  const rows=[['DOT#','Name','City','State','Phone','Status','Notes','Added'],
-    ...outreachList.map(c=>[c.dot,e(c.name),e(c.city||''),c.state,c.phone,c.status||'identified',e(c.notes||''),c.addedAt])];
+  const rows=[['DOT#','Name','City','State','Phone','Notes','Added'],
+    ...outreachList.map(c=>[c.dot,e(c.name),e(c.city||''),c.state,c.phone,e(c.notes||''),c.addedAt])];
   dlCSV(rows,`outreach_${today()}.csv`);
   showToast(`Exported ${outreachList.length} carriers`);
 }
@@ -1011,6 +830,7 @@ function today(){return new Date().toISOString().split('T')[0];}
 function clearSearch(){
   stateSel.value='';document.getElementById('inp-city').value='';
   document.getElementById('name-kw').value='';allResults=[];
+  selectedMapStates.clear(); stateResultsCache = {};
   document.getElementById('pag-row').style.display='none';
   document.getElementById('s-status').textContent='';
   document.getElementById('results-area').innerHTML=`<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div class="st">Select a state to find carriers</div><div class="ss">Pick any state from the dropdown above.</div></div>`;
@@ -1133,13 +953,9 @@ document.getElementById('name-kw').addEventListener('keydown',e=>{if(e.key==='En
 let currentDetailCarrier = null;
 
 function openDetailByDot(dot) {
-  // Look in search results first, fall back to outreach list
-  let carrier = allResults.find(c => String(c.dotNumber) === String(dot));
-  if (!carrier) {
-    const oc = outreachList.find(c => String(c.dot) === String(dot));
-    if (oc) carrier = { dotNumber: oc.dot, legalName: oc.name, phyCity: oc.city, phyState: oc.state, telephone: oc.phone, docketNumber: oc.mc || '' };
-  }
+  const carrier = allResults.find(c => String(c.dotNumber) === String(dot));
   if (!carrier) return;
+  // Convert to the format openDetail expects
   openDetail({
     dotNumber: String(carrier.dotNumber || ''),
     legalName: carrier.legalName || carrier.dbaName || '—',
@@ -1186,82 +1002,34 @@ function openDetail(carrier) {
   addBtn.disabled = !!isSaved;
 }
 
-// ── Copy to clipboard helper ─────────────────────────────────────────
-function copyField(btn, text) {
-  navigator.clipboard.writeText(text).then(() => {
-    btn.classList.add('copied');
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-    setTimeout(() => {
-      btn.classList.remove('copied');
-      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
-    }, 1800);
-  });
-}
-const COPY_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
-
-// ── Scorecard helpers ────────────────────────────────────────────────
-function qualDot(status) {
-  // Returns {cls, label} for a qual row
-  if (status === 'good')    return { cls: 'green', dot: 'qdot-green', label: 'GOOD' };
-  if (status === 'warn')    return { cls: 'warn',  dot: 'qdot-amber', label: 'REVIEW' };
-  if (status === 'bad')     return { cls: 'bad',   dot: 'qdot-red',   label: 'FAIL' };
-  return { cls: 'unk', dot: 'qdot-gray', label: 'N/A' };
-}
-function qualRow(label, status) {
-  const q = qualDot(status);
-  return `<div class="qual-row">
-    <span class="qual-label">${label}</span>
-    <span class="qual-dot qual-${q.cls}"><span class="qdot ${q.dot}"></span>${q.label}</span>
-  </div>`;
-}
-function loadingQualRow(label) {
-  return `<div class="qual-row">
-    <span class="qual-label">${label}</span>
-    <span class="qual-dot qual-unk"><span class="qual-loading"></span></span>
-  </div>`;
-}
-
 async function renderDetailPanel(c) {
-  const dot        = c.dotNumber || '';
-  const classdef   = c.classdef || '—';
+  const dot = c.dotNumber || '';
+  const classdef = c.classdef || '—';
   const powerUnits = c.totalPowerUnits || '—';
-  const drivers    = c.totalDrivers || '—';
-  const mc         = c.docketNumber ? 'MC-' + c.docketNumber : '—';
-  const phone      = c.telephone || '—';
-  const email      = c.email || '';
-  const officer    = c.companyOfficer || '';
+  const drivers = c.totalDrivers || '—';
+  const mc = c.docketNumber ? 'MC-' + c.docketNumber : '—';
+  const phone = c.telephone || '—';
+  const email = c.email || '';
+  const officer = c.companyOfficer || '';
 
-  const safer411   = `https://www.carrier411.com/carrier-search/?usdot=${dot}`;
-  const saferUrl   = `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${dot}`;
-
-  // Render skeleton with loading scorecard
+  // Render immediately with loading state for authority
   document.getElementById('dp-body').innerHTML = `
-    <div class="qual-card" id="dp-qual-card">
-      <div class="qual-title">Carrier Qualification Guidelines</div>
-      ${loadingQualRow('Carrier Authority')}
-      <div id="dp-qual-verdict" class="qual-verdict qual-verdict-unk" style="margin-top:10px;">Checking…</div>
-      <a href="${safer411}" target="_blank" class="btn-freightguard">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        Open in Carrier411 → (login required)
-      </a>
+    <div class="detail-section">
+      <div class="detail-section-title">Operating Authority</div>
+      <div class="detail-row" id="dp-auth-row">
+        <span class="detail-label">Authority Status</span>
+        <span class="detail-value" id="dp-auth-val" style="display:flex;align-items:center;gap:6px;">
+          <span style="width:12px;height:12px;border:2px solid var(--surface3);border-top-color:var(--blue);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;"></span>
+          Checking…
+        </span>
+      </div>
+      <div class="detail-row"><span class="detail-label">MC #</span><span class="detail-value">${mc}</span></div>
+      <div class="detail-row"><span class="detail-label">Operation Type</span><span class="detail-value">${classdef}</span></div>
     </div>
-
     <div class="detail-section">
       <div class="detail-section-title">Identity</div>
-      <div class="detail-row">
-        <span class="detail-label">USDOT #</span>
-        <span class="detail-value blue" style="display:flex;align-items:center;gap:0;">
-          ${dot}
-          <button class="copy-btn" onclick="copyField(this,'${dot}')" title="Copy DOT number">${COPY_ICON}</button>
-        </span>
-      </div>
-      <div class="detail-row">
-        <span class="detail-label">MC #</span>
-        <span class="detail-value" style="display:flex;align-items:center;gap:0;">
-          ${mc !== '—' ? `<a href="https://www.carrier411.com/carrier-search/?docket=${c.docketNumber}" target="_blank" style="color:var(--blue);text-decoration:none;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;" title="Open in Carrier411 (login required)">${mc} ↗</a><button class="copy-btn" onclick="copyField(this,'${c.docketNumber}')" title="Copy MC number">${COPY_ICON}</button>` : '—'}
-        </span>
-      </div>
-      <div class="detail-row"><span class="detail-label">Operation Type</span><span class="detail-value">${classdef}</span></div>
+      <div class="detail-row"><span class="detail-label">USDOT #</span><span class="detail-value blue">${dot}</span></div>
+      <div class="detail-row"><span class="detail-label">USDOT Status</span><span class="detail-value green">Active</span></div>
       ${officer ? `<div class="detail-row"><span class="detail-label">Officer</span><span class="detail-value">${h(officer)}</span></div>` : ''}
     </div>
     <div class="detail-section">
@@ -1278,7 +1046,7 @@ async function renderDetailPanel(c) {
     </div>
     <div class="detail-section">
       <div class="detail-section-title">Quick Actions</div>
-      <a href="${saferUrl}" target="_blank" style="display:block;padding:8px 12px;background:var(--surface2);border-radius:var(--radius);font-size:12px;color:var(--blue);text-decoration:none;font-weight:700;margin-bottom:6px;">
+      <a href="https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${dot}" target="_blank" style="display:block;padding:8px 12px;background:var(--surface2);border-radius:var(--radius);font-size:12px;color:var(--blue);text-decoration:none;font-weight:700;margin-bottom:6px;">
         🔍 Full SAFER Profile
       </a>
       <a href="tel:${(c.telephone||'').replace(/\D/g,'')}" style="display:block;padding:8px 12px;background:var(--surface2);border-radius:var(--radius);font-size:12px;color:var(--text2);text-decoration:none;font-weight:700;">
@@ -1286,75 +1054,28 @@ async function renderDetailPanel(c) {
       </a>
     </div>`;
 
-  // ── Fetch live data from QCMobile ───────────────────────────────
-  const authResult = await fetch(`/api/authority?dot=${dot}`).then(r => r.json()).catch(() => ({}));
-  const auth = authResult || {};
+  // Now fetch live authority status from QCMobile API
+  try {
+    const r = await fetch(`/api/authority?dot=${dot}`);
+    const data = await r.json();
+    const authEl = document.getElementById('dp-auth-val');
+    if (!authEl) return;
 
-  const ca      = auth.commonAuthorityStatus  || '';
-  const ct      = auth.contractAuthorityStatus || '';
-  const sr      = (auth.safetyRating || '').toUpperCase();
-  const insFile = (auth.insuranceOnFile  || '').toUpperCase();
-  const insReq  = (auth.insuranceRequired || '').toUpperCase();
-  const oos     = auth.outOfServiceDate || '';
+    const commonAuth = data.commonAuthorityStatus || '';
+    const contractAuth = data.contractAuthorityStatus || '';
+    const isAuthorized = commonAuth === 'A' || contractAuth === 'A';
+    const isPending = commonAuth === 'P' || contractAuth === 'P';
 
-  // ── CARRIER AUTHORITY ─────────────────────────────────────────
-  let authStatus, authLabel;
-  if (ca === 'A' || ct === 'A') {
-    authStatus = 'good'; authLabel = 'Carrier Authority (Active)';
-  } else if (ca === 'P' || ct === 'P') {
-    authStatus = 'warn'; authLabel = 'Carrier Authority (Pending)';
-  } else if (oos) {
-    authStatus = 'bad'; authLabel = 'Carrier Authority (Out of Service)';
-  } else {
-    authStatus = 'bad';
-    authLabel  = ca === 'I' || ct === 'I' ? 'Carrier Authority (Inactive)' : 'Carrier Authority (None)';
-  }
-
-  // ── Re-render scorecard ──────────────────────────────────────────
-  const card = document.getElementById('dp-qual-card');
-  if (!card) return;
-  card.innerHTML = `
-    <div class="qual-title">Carrier Qualification Guidelines</div>
-    ${qualRow(authLabel, authStatus)}
-    <a href="${safer411}" target="_blank" class="btn-freightguard" style="margin-top:12px;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-      Open in Carrier411 → (login required)
-    </a>`;
-
-  // ── Update the table row with live QCMobile authority status ─────
-  // This overwrites the stale census badge with the verified live result
-  const mcNum = c.docketNumber || '';
-  let liveBadge;
-  if (authStatus === 'good') {
-    liveBadge = `<div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);">MC-${mcNum}</span>
-      <span class="badge badge-active" style="width:fit-content;">Active ✓</span>
-    </div>`;
-  } else if (authStatus === 'warn') {
-    liveBadge = `<div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--amber);">MC-${mcNum}</span>
-      <span class="badge badge-pending" style="width:fit-content;">Pending</span>
-    </div>`;
-  } else {
-    liveBadge = `<div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--red);">MC-${mcNum}</span>
-      <span class="badge badge-inactive" style="width:fit-content;">Inactive ✗</span>
-    </div>`;
-  }
-
-  // Find the row by DOT and update its MC Authority cell (5th td, index 4)
-  const rows = document.querySelectorAll('tbody tr');
-  for (const row of rows) {
-    const dotCell = row.querySelector('td:first-child a');
-    if (dotCell && dotCell.textContent.trim() === dot) {
-      const mcCell = row.querySelector('td:nth-child(5)');
-      if (mcCell) {
-        mcCell.innerHTML = liveBadge;
-        // Also update row tint
-        row.style.background = authStatus === 'bad' ? 'rgba(192,53,53,0.03)' : '';
-      }
-      break;
+    if (isAuthorized) {
+      authEl.innerHTML = `<span style="color:var(--green);font-weight:800;">✅ AUTHORIZED FOR PROPERTY</span>`;
+    } else if (isPending) {
+      authEl.innerHTML = `<span style="color:var(--amber);font-weight:800;">⏳ PENDING</span>`;
+    } else {
+      authEl.innerHTML = `<span style="color:var(--red);font-weight:800;">❌ NOT AUTHORIZED</span>`;
     }
+  } catch(e) {
+    const authEl = document.getElementById('dp-auth-val');
+    if (authEl) authEl.innerHTML = `<span style="color:var(--text3);">Unable to check</span>`;
   }
 }
 
@@ -1442,10 +1163,65 @@ function initInlineMap() {
           layer.on({
             mouseover: (e) => e.target.setStyle({ weight: 2, fillOpacity: 1, color: '#32AAE1' }),
             mouseout:  (e) => window.inlineStatesLayer.resetStyle(e.target),
-            click: () => {
-              document.getElementById('sel-state').value = code;
-              document.getElementById('inp-city').value = '';
-              runSearch();
+            click: async () => {
+              if (searching) return;
+
+              if (selectedMapStates.has(code)) {
+                // Deselect — remove this state
+                selectedMapStates.delete(code);
+                delete stateResultsCache[code];
+                layer.setStyle({ fillColor: colorForCount(null), weight: 1, color: '#ffffff', fillOpacity: 0.85 });
+
+                if (selectedMapStates.size === 0) {
+                  // Nothing left — clear everything
+                  allResults = [];
+                  document.getElementById('sel-state').value = '';
+                  document.getElementById('results-area').innerHTML = `<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div class="st">Select a state to find carriers</div></div>`;
+                  document.getElementById('pag-row').style.display = 'none';
+                  updateStats([]);
+                } else {
+                  // Recompute allResults from remaining cached states
+                  const seen = new Set();
+                  allResults = Object.values(stateResultsCache).flat().filter(c => {
+                    const d = String(c.dotNumber||''); if(seen.has(d)) return false; seen.add(d); return true;
+                  });
+                  const pgSz = parseInt(document.getElementById('page-size').value);
+                  updateStats(allResults);
+                  renderPage(0, pgSz);
+                  document.getElementById('sel-state').value = [...selectedMapStates][0];
+                }
+              } else {
+                // Select — fetch this state and add to cumulative
+                selectedMapStates.add(code);
+                layer.setStyle({ fillColor: '#E60080', fillOpacity: 0.75, weight: 2, color: '#E60080' });
+                document.getElementById('sel-state').value = code;
+
+                // Fetch if not cached
+                if (!stateResultsCache[code]) {
+                  searching = true;
+                  try {
+                    const entityType = document.getElementById('auth-filter')?.value || 'carriers';
+                    const r = await fetch(`/api/carriers?state=${code}&limit=2000&entityType=${entityType}`);
+                    const data = await r.json();
+                    stateResultsCache[code] = data.content || [];
+                    updateStateCount(code, stateResultsCache[code].length);
+                    layer.setStyle({ fillColor: '#E60080', fillOpacity: 0.75, weight: 2, color: '#E60080' });
+                  } catch(e) {
+                    stateResultsCache[code] = [];
+                  }
+                  searching = false;
+                }
+
+                // Merge into allResults
+                const seen = new Set(allResults.map(c => String(c.dotNumber||'')));
+                (stateResultsCache[code] || []).forEach(c => {
+                  const d = String(c.dotNumber||''); if(!d||seen.has(d)) return; seen.add(d); allResults.push(c);
+                });
+
+                const pgSz = parseInt(document.getElementById('page-size').value);
+                updateStats(allResults);
+                renderPage(0, pgSz);
+              }
             },
           });
         }
