@@ -3228,7 +3228,7 @@ function drawNetworkLaneArcs() {
     const arcPoints = buildArc([p1[0], p1[1]], [p2[0], p2[1]], 16);
 
     // Line width scales with frequency
-    const weight = Math.min(1.5 + count * 0.8, 5);
+    const weight = Math.min(1 + count * 0.5, 3);
 
     const polyline = L.polyline(arcPoints, {
       color: '#32AAE1',
@@ -3244,9 +3244,9 @@ function drawNetworkLaneArcs() {
 
     // Origin circle — blue outline
     const originCircle = L.circleMarker([p1[0], p1[1]], {
-      radius: 5 + Math.min(count, 4),
+      radius: 3 + Math.min(count, 2),
       color: '#1e8ab8',
-      weight: 2,
+      weight: 1.5,
       fillColor: '#32AAE1',
       fillOpacity: 0.9,
       interactive: false,
@@ -3255,9 +3255,9 @@ function drawNetworkLaneArcs() {
 
     // Destination circle — pink/magenta fill
     const destCircle = L.circleMarker([p2[0], p2[1]], {
-      radius: 5 + Math.min(count, 4),
+      radius: 3 + Math.min(count, 2),
       color: '#a8005a',
-      weight: 2,
+      weight: 1.5,
       fillColor: '#E60080',
       fillOpacity: 0.9,
       interactive: false,
