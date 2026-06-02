@@ -2514,6 +2514,14 @@ async function renderDetailPanel(c) {
 
       <div class="detail-section-title">Quick Actions</div>
 
+      <label style="display:block;padding:8px 12px;background:var(--surface2);border-radius:var(--radius);font-size:12px;color:var(--text2);font-weight:700;margin-bottom:6px;cursor:pointer;text-decoration:none;" title="CSV columns: Origin City, Origin State, Destination City, Destination State">
+
+        📂 Import Lanes from CSV
+
+        <input type="file" accept=".csv" style="display:none;" onchange="importLanesCSV(event,'${dot}')">
+
+      </label>
+
       <a href="${saferUrl}" target="_blank" style="display:block;padding:8px 12px;background:var(--surface2);border-radius:var(--radius);font-size:12px;color:var(--blue);text-decoration:none;font-weight:700;margin-bottom:6px;">
 
         🔍 Full SAFER Profile
@@ -2770,6 +2778,57 @@ function removeLane(dot, index) {
   saveLanes(dot, lanes);
 
   renderLanes(dot);
+
+}
+
+function importLanesCSV(event, dot) {
+
+  const file = event.target.files[0];
+
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = (e) => {
+
+    const lines = e.target.result.split(/\r?\n/).filter(l => l.trim());
+
+    // Skip header row if first cell looks like a label (not a city/state)
+    const firstCell = lines[0] ? lines[0].split(',')[0].trim().toLowerCase() : '';
+    const startIdx  = (firstCell === 'origin city' || firstCell === 'origin') ? 1 : 0;
+
+    const lanes = loadLanes(dot);
+
+    let added = 0;
+
+    for (let i = startIdx; i < lines.length; i++) {
+
+      const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+
+      const originCity  = cols[0] || '';
+      const originState = cols[1] || '';
+      const destCity    = cols[2] || '';
+      const destState   = cols[3] || '';
+
+      if (!originCity && !originState && !destCity && !destState) continue;
+
+      lanes.push({ originCity, originState, destCity, destState });
+
+      added++;
+
+    }
+
+    saveLanes(dot, lanes);
+
+    renderLanes(dot);
+
+    event.target.value = '';
+
+    showToast(`${added} lane${added !== 1 ? 's' : ''} imported`);
+
+  };
+
+  reader.readAsText(file);
 
 }
 
