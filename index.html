@@ -2917,7 +2917,7 @@ function renderNetworkList() {
 
   container.innerHTML = onboarded.map(c => `
 
-    <div class="ocard">
+    <div class="ocard" onclick="openDetailByDot('${c.dot}')" style="cursor:pointer;">
 
       <div style="flex:1;min-width:0;">
 
@@ -2930,10 +2930,6 @@ function renderNetworkList() {
           <span>${c.city ? h(c.city) + ', ' : ''}${c.state}</span>
 
           <span>${c.phone || 'no phone'}</span>
-
-          <span>Added ${c.addedAt}</span>
-
-          <span style="color:#3db55d;font-weight:700;">✅ Onboarded</span>
 
         </div>
 
