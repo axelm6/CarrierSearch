@@ -984,7 +984,9 @@ const STATES = [
 
   ['SD','South Dakota'],['TN','Tennessee'],['TX','Texas'],['UT','Utah'],['VT','Vermont'],
 
-  ['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],['WI','Wisconsin'],['WY','Wyoming']
+  ['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],['WI','Wisconsin'],['WY','Wyoming'],
+
+  ['MEX','Mexico'],['CAN','Canada']
 
 ];
 
@@ -2474,7 +2476,7 @@ async function renderDetailPanel(c) {
 
             <select id="dp-lane-origin-state" style="width:100%;box-sizing:border-box;padding:6px 28px 6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;appearance:none;outline:none;cursor:pointer;">
 
-              <option value="">— State —</option>
+              <option value="">— State/Int. Country —</option>
 
               ${STATES.map(([code,name])=>`<option value="${code}">${code} — ${name}</option>`).join('')}
 
@@ -2494,7 +2496,7 @@ async function renderDetailPanel(c) {
 
             <select id="dp-lane-dest-state" style="width:100%;box-sizing:border-box;padding:6px 28px 6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;appearance:none;outline:none;cursor:pointer;">
 
-              <option value="">— State —</option>
+              <option value="">— State/Int. Country —</option>
 
               ${STATES.map(([code,name])=>`<option value="${code}">${code} — ${name}</option>`).join('')}
 
