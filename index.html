@@ -2456,6 +2456,60 @@ async function renderDetailPanel(c) {
 
     </div>
 
+    <div class="detail-section" id="dp-lanes-section">
+
+      <div class="detail-section-title">Lanes</div>
+
+      <div id="dp-lanes-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end;">
+
+        <div>
+
+          <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Origin</div>
+
+          <input id="dp-lane-origin" type="text" placeholder="e.g. Chicago, IL" style="width:100%;box-sizing:border-box;padding:7px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:'Nunito',sans-serif;outline:none;" />
+
+          <div class="sel-wrap" style="margin-top:5px;">
+
+            <select id="dp-lane-origin-state" style="width:100%;box-sizing:border-box;padding:6px 28px 6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;appearance:none;outline:none;cursor:pointer;">
+
+              <option value="">— State —</option>
+
+              ${STATES.map(([code,name])=>`<option value="${code}">${code} — ${name}</option>`).join('')}
+
+            </select>
+
+          </div>
+
+        </div>
+
+        <div>
+
+          <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Destination</div>
+
+          <input id="dp-lane-dest" type="text" placeholder="e.g. Dallas, TX" style="width:100%;box-sizing:border-box;padding:7px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:'Nunito',sans-serif;outline:none;" />
+
+          <div class="sel-wrap" style="margin-top:5px;">
+
+            <select id="dp-lane-dest-state" style="width:100%;box-sizing:border-box;padding:6px 28px 6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;appearance:none;outline:none;cursor:pointer;">
+
+              <option value="">— State —</option>
+
+              ${STATES.map(([code,name])=>`<option value="${code}">${code} — ${name}</option>`).join('')}
+
+            </select>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <button onclick="addLane('${dot}')" style="margin-top:10px;width:100%;padding:8px;border-radius:var(--radius);border:1px dashed var(--border);background:transparent;color:var(--text2);font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer;">+ Add Lane</button>
+
+    </div>
+
     <div class="detail-section">
 
       <div class="detail-section-title">Quick Actions</div>
@@ -2473,6 +2527,9 @@ async function renderDetailPanel(c) {
       </a>
 
     </div>`;
+
+  // Render saved lanes for this carrier
+  renderLanes(dot);
 
   // ── Fetch live data from QCMobile ───────────────────────────────
 
@@ -2615,6 +2672,104 @@ function closeDetail() {
   document.querySelectorAll('tr.selected').forEach(r => r.classList.remove('selected'));
 
   currentDetailCarrier = null;
+
+}
+
+// ── Lane management ──────────────────────────────────────────────────
+
+function loadLanes(dot) {
+
+  try { return JSON.parse(localStorage.getItem('lanes_' + dot) || '[]'); } catch(e) { return []; }
+
+}
+
+function saveLanes(dot, lanes) {
+
+  try { localStorage.setItem('lanes_' + dot, JSON.stringify(lanes)); } catch(e) {}
+
+}
+
+function renderLanes(dot) {
+
+  const list = document.getElementById('dp-lanes-list');
+
+  if (!list) return;
+
+  const lanes = loadLanes(dot);
+
+  if (!lanes.length) {
+
+    list.innerHTML = `<div style="font-size:12px;color:var(--text3);font-style:italic;">No lanes added yet.</div>`;
+
+    return;
+
+  }
+
+  list.innerHTML = lanes.map((l, i) => `
+
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:var(--radius);padding:7px 10px;gap:8px;">
+
+      <span style="font-size:12px;font-weight:700;color:var(--text);">
+
+        ${l.originCity ? l.originCity + ', ' : ''}${l.originState || '—'}
+
+        <span style="color:var(--text3);font-weight:400;margin:0 4px;">→</span>
+
+        ${l.destCity ? l.destCity + ', ' : ''}${l.destState || '—'}
+
+      </span>
+
+      <button onclick="removeLane('${dot}', ${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);line-height:1;padding:0 2px;font-size:15px;" title="Remove lane">×</button>
+
+    </div>
+
+  `).join('');
+
+}
+
+function addLane(dot) {
+
+  const originCity  = (document.getElementById('dp-lane-origin')?.value || '').trim();
+
+  const originState = document.getElementById('dp-lane-origin-state')?.value || '';
+
+  const destCity    = (document.getElementById('dp-lane-dest')?.value || '').trim();
+
+  const destState   = document.getElementById('dp-lane-dest-state')?.value || '';
+
+  if (!originState && !originCity && !destState && !destCity) { showToast('Enter at least an origin or destination'); return; }
+
+  const lanes = loadLanes(dot);
+
+  lanes.push({ originCity, originState, destCity, destState });
+
+  saveLanes(dot, lanes);
+
+  // Clear inputs
+
+  document.getElementById('dp-lane-origin').value = '';
+
+  document.getElementById('dp-lane-origin-state').value = '';
+
+  document.getElementById('dp-lane-dest').value = '';
+
+  document.getElementById('dp-lane-dest-state').value = '';
+
+  renderLanes(dot);
+
+  showToast('Lane added');
+
+}
+
+function removeLane(dot, index) {
+
+  const lanes = loadLanes(dot);
+
+  lanes.splice(index, 1);
+
+  saveLanes(dot, lanes);
+
+  renderLanes(dot);
 
 }
 
