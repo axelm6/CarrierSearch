@@ -838,16 +838,19 @@
             <div style="width:14px;height:14px;border-radius:3px;background:#EBF5FB;border:1px solid #ccc;"></div> No activity
           </div>
           <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
-            <div style="width:14px;height:14px;border-radius:3px;background:rgba(50,170,225,0.35);border:1px solid #32AAE1;"></div> Lane origin
+            <div style="width:14px;height:14px;border-radius:3px;background:rgba(50,170,225,0.35);border:1px solid #32AAE1;"></div> Origin &amp; destination
           </div>
           <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
-            <div style="width:14px;height:14px;border-radius:3px;background:rgba(230,0,128,0.30);border:1px solid #E60080;"></div> Lane destination
+            <div style="width:14px;height:14px;border-radius:3px;background:rgba(230,0,128,0.30);border:1px solid #E60080;"></div> Only origin or destination
           </div>
           <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
-            <div style="width:14px;height:14px;border-radius:3px;background:rgba(120,110,175,0.40);border:1px solid #786EAF;"></div> Origin &amp; destination
+            <div style="width:14px;height:14px;border-radius:3px;background:rgba(192,53,53,0.28);border:1px solid #c03535;"></div> Onboarded (no lanes)
           </div>
           <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
-            <div style="width:28px;height:3px;background:linear-gradient(90deg,#32AAE1,#E60080);border-radius:2px;"></div> Lane route
+            <div style="width:28px;height:3px;background:#32AAE1;border-radius:2px;"></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:#32AAE1;"></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:#E60080;"></div>
+            Lane route
           </div>
         </div>
 
@@ -3130,9 +3133,16 @@ function initNetworkMap() {
 
           layer.on({
 
-            mouseover: (e) => e.target.setStyle({ weight: 2.5, fillOpacity: 1, color: '#32AAE1' }),
-
-            mouseout:  (e) => window.networkStatesLayer.resetStyle(e.target),
+            mouseover: (e) => {
+              const _code = STATE_ABBR[e.target.feature.properties.name];
+              e.target.setStyle({ weight: 2.5, color: '#32AAE1', fillOpacity: 1 });
+            },
+            mouseout: (e) => {
+              // Restore computed color without wiping it via resetStyle
+              const _code = STATE_ABBR[e.target.feature.properties.name];
+              e.target.setStyle({ weight: 1, color: '#ffffff' });
+              applyNetworkStateColor(e.target, _code);
+            },
 
           });
 
@@ -3156,32 +3166,39 @@ function refreshNetworkMapColors() {
   const { originStates, destStates } = getNetworkLaneData();
 
   window.networkStatesLayer.eachLayer(layer => {
-
     const code = STATE_ABBR[layer.feature.properties.name];
-
     if (!code) return;
-
-    const isOrigin = originStates.has(code);
-    const isDest   = destStates.has(code);
-    const hasBoth  = isOrigin && isDest;
-
-    let fill, opacity;
-    if (hasBoth)      { fill = 'rgba(120,110,175,1)'; opacity = 0.55; }
-    else if (isOrigin){ fill = 'rgba(50,170,225,1)';  opacity = 0.45; }
-    else if (isDest)  { fill = 'rgba(230,0,128,1)';   opacity = 0.40; }
-    else {
-      const cnt = outreachList.filter(c => c.state === code && (c.status === 'onboarded' || c.status === 'trusted')).length;
-      fill = cnt > 0 ? '#3db55d' : '#EBF5FB';
-      opacity = cnt > 0 ? 0.45 : 0.5;
-    }
-
-    layer.setStyle({ fillColor: fill, fillOpacity: opacity });
-
+    applyNetworkStateColor(layer, code);
   });
 
   // Redraw lane arcs
   drawNetworkLaneArcs();
 
+}
+
+// ── Compute and store the fill color for a state layer ───────────────
+function applyNetworkStateColor(layer, code) {
+  const { originStates, destStates } = getNetworkLaneData();
+  const isOrigin = originStates.has(code);
+  const isDest   = destStates.has(code);
+  const hasBoth  = isOrigin && isDest;
+  let fill, opacity;
+  if (hasBoth) {
+    // Both origin AND destination → blue
+    fill = '#32AAE1'; opacity = 0.35;
+  } else if (isOrigin || isDest) {
+    // Only origin or only destination → pink
+    fill = '#E60080'; opacity = 0.30;
+  } else {
+    const cnt = outreachList.filter(c => c.state === code && (c.status === 'onboarded' || c.status === 'trusted')).length;
+    if (cnt > 0) {
+      // Onboarded carrier, no lanes → red-ish
+      fill = '#c03535'; opacity = 0.28;
+    } else {
+      fill = '#EBF5FB'; opacity = 0.5;
+    }
+  }
+  layer.setStyle({ fillColor: fill, fillOpacity: opacity });
 }
 
 function drawNetworkLaneArcs() {
@@ -3207,8 +3224,8 @@ function drawNetworkLaneArcs() {
     const p2 = STATE_CENTROIDS[dest];
     if (!p1 || !p2) continue;
 
-    // Build a curved arc using intermediate points
-    const arcPoints = buildArc([p1[0], p1[1]], [p2[0], p2[1]], 12);
+    // Build a curved arc
+    const arcPoints = buildArc([p1[0], p1[1]], [p2[0], p2[1]], 16);
 
     // Line width scales with frequency
     const weight = Math.min(1.5 + count * 0.8, 5);
@@ -3216,28 +3233,36 @@ function drawNetworkLaneArcs() {
     const polyline = L.polyline(arcPoints, {
       color: '#32AAE1',
       weight: weight,
-      opacity: 0.75,
+      opacity: 0.80,
       smoothFactor: 1,
-      dashArray: null,
     });
-
-    // Arrow-head at destination using a small marker
-    const endLatLng = L.latLng(p2[0], p2[1]);
-    const bearing = getBearing(arcPoints[arcPoints.length - 2], arcPoints[arcPoints.length - 1]);
-    const arrowIcon = L.divIcon({
-      className: '',
-      html: `<div style="transform:rotate(${bearing}deg);font-size:${10 + count}px;color:#E60080;line-height:1;margin-top:-6px;margin-left:-6px;">▶</div>`,
-      iconSize: [12, 12],
-      iconAnchor: [6, 6],
-    });
-    const arrowMarker = L.marker(endLatLng, { icon: arrowIcon, interactive: false });
 
     const uniqueCarriers = [...new Set(carriers)].join(', ');
     const tooltipHtml = `<strong>${origin} → ${dest}</strong><br/>${count} lane${count !== 1 ? 's' : ''}<br/><span style="font-size:10px;color:#666;">${uniqueCarriers}</span>`;
     polyline.bindTooltip(tooltipHtml, { sticky: true });
-
     polyline.addTo(window.networkLanesLayer);
-    arrowMarker.addTo(window.networkLanesLayer);
+
+    // Origin circle — blue outline
+    const originCircle = L.circleMarker([p1[0], p1[1]], {
+      radius: 5 + Math.min(count, 4),
+      color: '#1e8ab8',
+      weight: 2,
+      fillColor: '#32AAE1',
+      fillOpacity: 0.9,
+      interactive: false,
+    });
+    originCircle.addTo(window.networkLanesLayer);
+
+    // Destination circle — pink/magenta fill
+    const destCircle = L.circleMarker([p2[0], p2[1]], {
+      radius: 5 + Math.min(count, 4),
+      color: '#a8005a',
+      weight: 2,
+      fillColor: '#E60080',
+      fillOpacity: 0.9,
+      interactive: false,
+    });
+    destCircle.addTo(window.networkLanesLayer);
   }
 
 }
@@ -3264,13 +3289,7 @@ function buildArc(from, to, steps) {
   return points;
 }
 
-// Get bearing angle between two points for arrow rotation
-function getBearing(p1, p2) {
-  const dLat = p2[0] - p1[0];
-  const dLng = p2[1] - p1[1];
-  const angle = Math.atan2(dLng, dLat) * (180 / Math.PI);
-  return (angle + 360) % 360;
-}
+
 
 function renderNetworkList() {
 
