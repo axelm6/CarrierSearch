@@ -826,10 +826,29 @@
 
         <!-- Inline map (same as Carrier Search) -->
 
-        <div style="margin-bottom:20px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow);position:relative;z-index:0;">
+        <div style="margin-bottom:8px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow);position:relative;z-index:0;">
 
-          <div id="us-map-network" style="width:100%;height:340px;position:relative;z-index:0;"></div>
+          <div id="us-map-network" style="width:100%;height:420px;position:relative;z-index:0;"></div>
 
+        </div>
+
+        <!-- Network map legend -->
+        <div style="display:flex;gap:16px;margin-bottom:16px;align-items:center;flex-wrap:wrap;padding:8px 4px;">
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
+            <div style="width:14px;height:14px;border-radius:3px;background:#EBF5FB;border:1px solid #ccc;"></div> No activity
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
+            <div style="width:14px;height:14px;border-radius:3px;background:rgba(50,170,225,0.35);border:1px solid #32AAE1;"></div> Lane origin
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
+            <div style="width:14px;height:14px;border-radius:3px;background:rgba(230,0,128,0.30);border:1px solid #E60080;"></div> Lane destination
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
+            <div style="width:14px;height:14px;border-radius:3px;background:rgba(120,110,175,0.40);border:1px solid #786EAF;"></div> Origin &amp; destination
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
+            <div style="width:28px;height:3px;background:linear-gradient(90deg,#32AAE1,#E60080);border-radius:2px;"></div> Lane route
+          </div>
         </div>
 
         <!-- Onboarded carriers list -->
@@ -2697,6 +2716,9 @@ function saveLanes(dot, lanes) {
 
   try { localStorage.setItem('lanes_' + dot, JSON.stringify(lanes)); } catch(e) {}
 
+  // Refresh the network map live whenever lanes change
+  if (window.networkMapInitialized) refreshNetworkMapColors();
+
 }
 
 function renderLanes(dot) {
@@ -3013,6 +3035,40 @@ function initInlineMap() {
 
 }
 
+// ── State centroid coordinates for lane arc drawing ─────────────────
+const STATE_CENTROIDS = {
+  AL:[32.7,-86.7],AK:[64.2,-153.4],AZ:[34.3,-111.1],AR:[34.8,-92.2],CA:[36.8,-119.4],
+  CO:[39.0,-105.5],CT:[41.6,-72.7],DE:[39.0,-75.5],FL:[27.8,-81.6],GA:[32.7,-83.2],
+  HI:[20.9,-156.9],ID:[44.1,-114.5],IL:[40.0,-89.2],IN:[39.8,-86.1],IA:[42.0,-93.2],
+  KS:[38.5,-98.4],KY:[37.6,-84.7],LA:[31.1,-91.8],ME:[44.7,-69.4],MD:[39.1,-76.8],
+  MA:[42.2,-71.5],MI:[44.3,-85.4],MN:[46.4,-93.1],MS:[32.7,-89.7],MO:[38.5,-92.5],
+  MT:[47.0,-110.5],NE:[41.5,-99.9],NV:[38.5,-117.1],NH:[43.7,-71.6],NJ:[40.1,-74.5],
+  NM:[34.5,-105.9],NY:[42.9,-75.5],NC:[35.5,-79.4],ND:[47.5,-100.5],OH:[40.3,-82.8],
+  OK:[35.6,-96.9],OR:[44.1,-120.5],PA:[40.9,-77.8],RI:[41.7,-71.5],SC:[33.8,-80.9],
+  SD:[44.4,-100.2],TN:[35.9,-86.4],TX:[31.1,-97.6],UT:[39.3,-111.1],VT:[44.0,-72.7],
+  VA:[37.5,-79.5],WA:[47.4,-120.5],WV:[38.6,-80.6],WI:[44.3,-89.8],WY:[43.0,-107.6],
+  MEX:[23.6,-102.6],CAN:[56.1,-96.3]
+};
+
+function getNetworkLaneData() {
+  // Collect all lanes from all onboarded carriers
+  const onboarded = outreachList.filter(c => c.status === 'onboarded' || c.status === 'trusted');
+  const lanes = [];
+  const originStates = new Set();
+  const destStates   = new Set();
+  for (const carrier of onboarded) {
+    const carrierLanes = (() => { try { return JSON.parse(localStorage.getItem('lanes_' + carrier.dot) || '[]'); } catch(e) { return []; } })();
+    for (const lane of carrierLanes) {
+      if (lane.originState) originStates.add(lane.originState);
+      if (lane.destState)   destStates.add(lane.destState);
+      if (lane.originState && lane.destState) {
+        lanes.push({ origin: lane.originState, dest: lane.destState, carrier: carrier.name });
+      }
+    }
+  }
+  return { lanes, originStates, destStates };
+}
+
 function initNetworkMap() {
 
   if (window.networkMapInitialized) return;
@@ -3021,11 +3077,11 @@ function initNetworkMap() {
 
   window.networkLeafletMap = L.map('us-map-network', {
 
-    center: [37.8, -96], zoom: 3,
+    center: [39.5, -98.5], zoom: 4,
 
-    scrollWheelZoom: false, preferCanvas: true,
+    scrollWheelZoom: false, preferCanvas: false,
 
-    zoomControl: false, attributionControl: false,
+    zoomControl: true, attributionControl: false,
 
   });
 
@@ -3045,7 +3101,7 @@ function initNetworkMap() {
 
         style: () => ({
 
-          fillColor: '#EBF5FB', weight: 1, color: '#ffffff', fillOpacity: 0.85,
+          fillColor: '#EBF5FB', weight: 1, color: '#ffffff', fillOpacity: 0.6,
 
         }),
 
@@ -3059,19 +3115,22 @@ function initNetworkMap() {
 
           layer.bindTooltip(() => {
 
-            const cnt = outreachList.filter(c => c.state === code && c.status === 'onboarded').length;
-
-            return cnt > 0
-
-              ? `<strong>${fullName} (${code})</strong><br/>${cnt} onboarded carrier${cnt !== 1 ? 's' : ''}`
-
-              : `<strong>${fullName} (${code})</strong><br/>No onboarded carriers`;
+            const { originStates, destStates } = getNetworkLaneData();
+            const isOrigin = originStates.has(code);
+            const isDest   = destStates.has(code);
+            const cnt = outreachList.filter(c => c.state === code && (c.status === 'onboarded' || c.status === 'trusted')).length;
+            let tip = `<strong>${fullName} (${code})</strong>`;
+            if (cnt > 0) tip += `<br/>🏢 ${cnt} onboarded carrier${cnt !== 1 ? 's' : ''}`;
+            if (isOrigin) tip += `<br/>📍 Lane origin`;
+            if (isDest)   tip += `<br/>🏁 Lane destination`;
+            if (!cnt && !isOrigin && !isDest) tip += `<br/>No activity`;
+            return tip;
 
           }, { sticky: true });
 
           layer.on({
 
-            mouseover: (e) => e.target.setStyle({ weight: 2, fillOpacity: 1, color: '#32AAE1' }),
+            mouseover: (e) => e.target.setStyle({ weight: 2.5, fillOpacity: 1, color: '#32AAE1' }),
 
             mouseout:  (e) => window.networkStatesLayer.resetStyle(e.target),
 
@@ -3080,6 +3139,9 @@ function initNetworkMap() {
         }
 
       }).addTo(window.networkLeafletMap);
+
+      // Lane arcs layer group (drawn on top)
+      window.networkLanesLayer = L.layerGroup().addTo(window.networkLeafletMap);
 
       refreshNetworkMapColors();
 
@@ -3091,25 +3153,129 @@ function refreshNetworkMapColors() {
 
   if (!window.networkStatesLayer) return;
 
+  const { originStates, destStates } = getNetworkLaneData();
+
   window.networkStatesLayer.eachLayer(layer => {
 
     const code = STATE_ABBR[layer.feature.properties.name];
 
     if (!code) return;
 
-    const cnt = outreachList.filter(c => c.state === code && c.status === 'onboarded').length;
+    const isOrigin = originStates.has(code);
+    const isDest   = destStates.has(code);
+    const hasBoth  = isOrigin && isDest;
 
-    const fill = cnt > 0 ? '#3db55d' : '#EBF5FB';
+    let fill, opacity;
+    if (hasBoth)      { fill = 'rgba(120,110,175,1)'; opacity = 0.55; }
+    else if (isOrigin){ fill = 'rgba(50,170,225,1)';  opacity = 0.45; }
+    else if (isDest)  { fill = 'rgba(230,0,128,1)';   opacity = 0.40; }
+    else {
+      const cnt = outreachList.filter(c => c.state === code && (c.status === 'onboarded' || c.status === 'trusted')).length;
+      fill = cnt > 0 ? '#3db55d' : '#EBF5FB';
+      opacity = cnt > 0 ? 0.45 : 0.5;
+    }
 
-    layer.setStyle({ fillColor: fill, fillOpacity: cnt > 0 ? 0.7 : 0.5 });
+    layer.setStyle({ fillColor: fill, fillOpacity: opacity });
 
   });
 
+  // Redraw lane arcs
+  drawNetworkLaneArcs();
+
+}
+
+function drawNetworkLaneArcs() {
+
+  if (!window.networkLanesLayer) return;
+
+  window.networkLanesLayer.clearLayers();
+
+  const { lanes } = getNetworkLaneData();
+
+  // Deduplicate lanes by origin→dest pair, count frequency
+  const laneMap = {};
+  for (const lane of lanes) {
+    const key = lane.origin + '→' + lane.dest;
+    if (!laneMap[key]) laneMap[key] = { origin: lane.origin, dest: lane.dest, count: 0, carriers: [] };
+    laneMap[key].count++;
+    laneMap[key].carriers.push(lane.carrier);
+  }
+
+  for (const key of Object.keys(laneMap)) {
+    const { origin, dest, count, carriers } = laneMap[key];
+    const p1 = STATE_CENTROIDS[origin];
+    const p2 = STATE_CENTROIDS[dest];
+    if (!p1 || !p2) continue;
+
+    // Build a curved arc using intermediate points
+    const arcPoints = buildArc([p1[0], p1[1]], [p2[0], p2[1]], 12);
+
+    // Line width scales with frequency
+    const weight = Math.min(1.5 + count * 0.8, 5);
+
+    const polyline = L.polyline(arcPoints, {
+      color: '#32AAE1',
+      weight: weight,
+      opacity: 0.75,
+      smoothFactor: 1,
+      dashArray: null,
+    });
+
+    // Arrow-head at destination using a small marker
+    const endLatLng = L.latLng(p2[0], p2[1]);
+    const bearing = getBearing(arcPoints[arcPoints.length - 2], arcPoints[arcPoints.length - 1]);
+    const arrowIcon = L.divIcon({
+      className: '',
+      html: `<div style="transform:rotate(${bearing}deg);font-size:${10 + count}px;color:#E60080;line-height:1;margin-top:-6px;margin-left:-6px;">▶</div>`,
+      iconSize: [12, 12],
+      iconAnchor: [6, 6],
+    });
+    const arrowMarker = L.marker(endLatLng, { icon: arrowIcon, interactive: false });
+
+    const uniqueCarriers = [...new Set(carriers)].join(', ');
+    const tooltipHtml = `<strong>${origin} → ${dest}</strong><br/>${count} lane${count !== 1 ? 's' : ''}<br/><span style="font-size:10px;color:#666;">${uniqueCarriers}</span>`;
+    polyline.bindTooltip(tooltipHtml, { sticky: true });
+
+    polyline.addTo(window.networkLanesLayer);
+    arrowMarker.addTo(window.networkLanesLayer);
+  }
+
+}
+
+// Build a smooth arc between two lat/lng points using a quadratic bezier
+function buildArc(from, to, steps) {
+  const points = [];
+  // Control point: midpoint elevated slightly north/perpendicular
+  const midLat = (from[0] + to[0]) / 2;
+  const midLng = (from[1] + to[1]) / 2;
+  const dx = to[1] - from[1];
+  const dy = to[0] - from[0];
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  // Offset perpendicular to the line for curve
+  const curvature = dist * 0.18;
+  const perpLat = midLat + curvature * (dx / (dist || 1));
+  const perpLng = midLng - curvature * (dy / (dist || 1));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const lat = (1-t)*(1-t)*from[0] + 2*(1-t)*t*perpLat + t*t*to[0];
+    const lng = (1-t)*(1-t)*from[1] + 2*(1-t)*t*perpLng + t*t*to[1];
+    points.push([lat, lng]);
+  }
+  return points;
+}
+
+// Get bearing angle between two points for arrow rotation
+function getBearing(p1, p2) {
+  const dLat = p2[0] - p1[0];
+  const dLng = p2[1] - p1[1];
+  const angle = Math.atan2(dLng, dLat) * (180 / Math.PI);
+  return (angle + 360) % 360;
 }
 
 function renderNetworkList() {
 
   refreshNetworkMapColors();
+  // Lane arcs are redrawn inside refreshNetworkMapColors → drawNetworkLaneArcs
 
   const container = document.getElementById('network-list');
 
