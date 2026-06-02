@@ -2462,15 +2462,21 @@ async function renderDetailPanel(c) {
 
       <div id="dp-lanes-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;">
 
         <div>
 
-          <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Origin</div>
+          <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Origin City</div>
 
-          <input id="dp-lane-origin" type="text" placeholder="e.g. Chicago, IL" style="width:100%;box-sizing:border-box;padding:7px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:'Nunito',sans-serif;outline:none;" />
+          <input id="dp-lane-origin" type="text" placeholder="e.g. Chicago" style="width:100%;box-sizing:border-box;padding:7px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:'Nunito',sans-serif;outline:none;" />
 
-          <div class="sel-wrap" style="margin-top:5px;">
+        </div>
+
+        <div>
+
+          <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Origin State</div>
+
+          <div class="sel-wrap">
 
             <select id="dp-lane-origin-state" style="width:100%;box-sizing:border-box;padding:6px 28px 6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;appearance:none;outline:none;cursor:pointer;">
 
@@ -2486,11 +2492,29 @@ async function renderDetailPanel(c) {
 
         <div>
 
-          <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Destination</div>
+          <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Origin Country</div>
 
-          <input id="dp-lane-dest" type="text" placeholder="e.g. Dallas, TX" style="width:100%;box-sizing:border-box;padding:7px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:'Nunito',sans-serif;outline:none;" />
+          <input id="dp-lane-origin-country" type="text" placeholder="e.g. USA" style="width:100%;box-sizing:border-box;padding:7px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:'Nunito',sans-serif;outline:none;" />
 
-          <div class="sel-wrap" style="margin-top:5px;">
+        </div>
+
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;margin-top:8px;">
+
+        <div>
+
+          <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Dest. City</div>
+
+          <input id="dp-lane-dest" type="text" placeholder="e.g. Dallas" style="width:100%;box-sizing:border-box;padding:7px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:'Nunito',sans-serif;outline:none;" />
+
+        </div>
+
+        <div>
+
+          <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Dest. State</div>
+
+          <div class="sel-wrap">
 
             <select id="dp-lane-dest-state" style="width:100%;box-sizing:border-box;padding:6px 28px 6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;appearance:none;outline:none;cursor:pointer;">
 
@@ -2501,6 +2525,14 @@ async function renderDetailPanel(c) {
             </select>
 
           </div>
+
+        </div>
+
+        <div>
+
+          <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Dest. Country</div>
+
+          <input id="dp-lane-dest-country" type="text" placeholder="e.g. USA" style="width:100%;box-sizing:border-box;padding:7px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:'Nunito',sans-serif;outline:none;" />
 
         </div>
 
@@ -2719,11 +2751,11 @@ function renderLanes(dot) {
 
       <span style="font-size:12px;font-weight:700;color:var(--text);">
 
-        ${l.originCity ? l.originCity + ', ' : ''}${l.originState || '—'}
+        ${[l.originCity, l.originState, l.originCountry].filter(Boolean).join(', ') || '—'}
 
         <span style="color:var(--text3);font-weight:400;margin:0 4px;">→</span>
 
-        ${l.destCity ? l.destCity + ', ' : ''}${l.destState || '—'}
+        ${[l.destCity, l.destState, l.destCountry].filter(Boolean).join(', ') || '—'}
 
       </span>
 
@@ -2737,31 +2769,37 @@ function renderLanes(dot) {
 
 function addLane(dot) {
 
-  const originCity  = (document.getElementById('dp-lane-origin')?.value || '').trim();
+  const originCity    = (document.getElementById('dp-lane-origin')?.value || '').trim();
 
-  const originState = document.getElementById('dp-lane-origin-state')?.value || '';
+  const originState   = document.getElementById('dp-lane-origin-state')?.value || '';
 
-  const destCity    = (document.getElementById('dp-lane-dest')?.value || '').trim();
+  const originCountry = (document.getElementById('dp-lane-origin-country')?.value || '').trim();
 
-  const destState   = document.getElementById('dp-lane-dest-state')?.value || '';
+  const destCity      = (document.getElementById('dp-lane-dest')?.value || '').trim();
 
-  if (!originState && !originCity && !destState && !destCity) { showToast('Enter at least an origin or destination'); return; }
+  const destState     = document.getElementById('dp-lane-dest-state')?.value || '';
+
+  const destCountry   = (document.getElementById('dp-lane-dest-country')?.value || '').trim();
+
+  if (!originState && !originCity && !originCountry && !destState && !destCity && !destCountry) { showToast('Enter at least an origin or destination'); return; }
 
   const lanes = loadLanes(dot);
 
-  lanes.push({ originCity, originState, destCity, destState });
+  lanes.push({ originCity, originState, originCountry, destCity, destState, destCountry });
 
   saveLanes(dot, lanes);
-
-  // Clear inputs
 
   document.getElementById('dp-lane-origin').value = '';
 
   document.getElementById('dp-lane-origin-state').value = '';
 
+  document.getElementById('dp-lane-origin-country').value = '';
+
   document.getElementById('dp-lane-dest').value = '';
 
   document.getElementById('dp-lane-dest-state').value = '';
+
+  document.getElementById('dp-lane-dest-country').value = '';
 
   renderLanes(dot);
 
@@ -2805,14 +2843,16 @@ function importLanesCSV(event, dot) {
 
       const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
 
-      const originCity  = cols[0] || '';
-      const originState = cols[1] || '';
-      const destCity    = cols[2] || '';
-      const destState   = cols[3] || '';
+      const originCity    = cols[0] || '';
+      const originState   = cols[1] || '';
+      const originCountry = cols[2] || '';
+      const destCity      = cols[3] || '';
+      const destState     = cols[4] || '';
+      const destCountry   = cols[5] || '';
 
-      if (!originCity && !originState && !destCity && !destState) continue;
+      if (!originCity && !originState && !originCountry && !destCity && !destState && !destCountry) continue;
 
-      lanes.push({ originCity, originState, destCity, destState });
+      lanes.push({ originCity, originState, originCountry, destCity, destState, destCountry });
 
       added++;
 
