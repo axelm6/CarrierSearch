@@ -466,6 +466,14 @@
 
       </button>
 
+      <button class="nav-item" id="nav-network" onclick="showPanel('network',this)">
+
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><circle cx="19" cy="19" r="3"/><circle cx="5" cy="19" r="3"/><path d="M12 8v3m0 0-5.5 5.5M12 11l5.5 5.5"/></svg>
+
+        Our Network
+
+      </button>
+
     </div>
 
     <div class="s-divider"></div>
@@ -810,6 +818,44 @@
 
       </div>
 
+      <!-- Our Network Panel -->
+
+      <div id="panel-network" style="display:none;">
+
+        <div class="grad-bar"></div>
+
+        <!-- Inline map (same as Carrier Search) -->
+
+        <div style="margin-bottom:20px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow);position:relative;z-index:0;">
+
+          <div id="us-map-network" style="width:100%;height:340px;position:relative;z-index:0;"></div>
+
+        </div>
+
+        <!-- Onboarded carriers list -->
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+
+          <div style="font-size:13px;font-weight:700;color:var(--text2);" id="network-lbl">Onboarded Carriers</div>
+
+        </div>
+
+        <div id="network-list">
+
+          <div class="state-box">
+
+            <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><circle cx="19" cy="19" r="3"/><circle cx="5" cy="19" r="3"/><path d="M12 8v3m0 0-5.5 5.5M12 11l5.5 5.5"/></svg></div>
+
+            <div class="st">No onboarded carriers yet</div>
+
+            <div class="ss">Carriers marked as <strong>Onboarded</strong> in the Outreach List will appear here.</div>
+
+          </div>
+
+        </div>
+
+      </div>
+
     </div>
 
   </div>
@@ -993,19 +1039,25 @@ function showPanel(name, btn) {
 
   document.getElementById('panel-outreach').style.display = name === 'outreach' ? '' : 'none';
 
-  const titles = { search: 'Carrier Search', map: 'State Map', outreach: 'Outreach List' };
+  document.getElementById('panel-network').style.display  = name === 'network'  ? '' : 'none';
+
+  const titles = { search: 'Carrier Search', map: 'State Map', outreach: 'Outreach List', network: 'Our Network' };
 
   document.getElementById('ph').textContent = titles[name] || 'Carrier Search';
 
   const isOutreach = name === 'outreach';
 
-  document.getElementById('stats-search').style.display  = isOutreach ? 'none' : '';
+  const isNetwork  = name === 'network';
+
+  document.getElementById('stats-search').style.display   = (!isOutreach && !isNetwork) ? '' : 'none';
 
   document.getElementById('stats-outreach').style.display = isOutreach ? '' : 'none';
 
   if (name === 'outreach') renderOutreach();
 
-  if (name === 'map') initMap();
+  if (name === 'map')     initMap();
+
+  if (name === 'network') { initNetworkMap(); renderNetworkList(); setTimeout(() => { if (window.networkLeafletMap) window.networkLeafletMap.invalidateSize(); }, 50); }
 
 }
 
@@ -2742,6 +2794,154 @@ function initInlineMap() {
       }).addTo(window.inlineLeafletMap);
 
     });
+
+}
+
+function initNetworkMap() {
+
+  if (window.networkMapInitialized) return;
+
+  window.networkMapInitialized = true;
+
+  window.networkLeafletMap = L.map('us-map-network', {
+
+    center: [37.8, -96], zoom: 3,
+
+    scrollWheelZoom: false, preferCanvas: true,
+
+    zoomControl: false, attributionControl: false,
+
+  });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+
+    maxZoom: 19,
+
+  }).addTo(window.networkLeafletMap);
+
+  fetch('https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json')
+
+    .then(r => r.json())
+
+    .then(geo => {
+
+      window.networkStatesLayer = L.geoJson(geo, {
+
+        style: () => ({
+
+          fillColor: '#EBF5FB', weight: 1, color: '#ffffff', fillOpacity: 0.85,
+
+        }),
+
+        onEachFeature: (feature, layer) => {
+
+          const fullName = feature.properties.name;
+
+          const code = STATE_ABBR[fullName];
+
+          if (!code) return;
+
+          layer.bindTooltip(() => {
+
+            const cnt = outreachList.filter(c => c.state === code && c.status === 'onboarded').length;
+
+            return cnt > 0
+
+              ? `<strong>${fullName} (${code})</strong><br/>${cnt} onboarded carrier${cnt !== 1 ? 's' : ''}`
+
+              : `<strong>${fullName} (${code})</strong><br/>No onboarded carriers`;
+
+          }, { sticky: true });
+
+          layer.on({
+
+            mouseover: (e) => e.target.setStyle({ weight: 2, fillOpacity: 1, color: '#32AAE1' }),
+
+            mouseout:  (e) => window.networkStatesLayer.resetStyle(e.target),
+
+          });
+
+        }
+
+      }).addTo(window.networkLeafletMap);
+
+      refreshNetworkMapColors();
+
+    });
+
+}
+
+function refreshNetworkMapColors() {
+
+  if (!window.networkStatesLayer) return;
+
+  window.networkStatesLayer.eachLayer(layer => {
+
+    const code = STATE_ABBR[layer.feature.properties.name];
+
+    if (!code) return;
+
+    const cnt = outreachList.filter(c => c.state === code && c.status === 'onboarded').length;
+
+    const fill = cnt > 0 ? '#3db55d' : '#EBF5FB';
+
+    layer.setStyle({ fillColor: fill, fillOpacity: cnt > 0 ? 0.7 : 0.5 });
+
+  });
+
+}
+
+function renderNetworkList() {
+
+  refreshNetworkMapColors();
+
+  const container = document.getElementById('network-list');
+
+  const lbl       = document.getElementById('network-lbl');
+
+  const onboarded = outreachList.filter(c => c.status === 'onboarded');
+
+  lbl.textContent = onboarded.length
+
+    ? `${onboarded.length} onboarded carrier${onboarded.length !== 1 ? 's' : ''}`
+
+    : 'Onboarded Carriers';
+
+  if (!onboarded.length) {
+
+    container.innerHTML = `<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><circle cx="19" cy="19" r="3"/><circle cx="5" cy="19" r="3"/><path d="M12 8v3m0 0-5.5 5.5M12 11l5.5 5.5"/></svg></div><div class="st">No onboarded carriers yet</div><div class="ss">Carriers marked as <strong>Onboarded</strong> in the Outreach List will appear here.</div></div>`;
+
+    return;
+
+  }
+
+  container.innerHTML = onboarded.map(c => `
+
+    <div class="ocard">
+
+      <div style="flex:1;min-width:0;">
+
+        <div class="oname">${h(c.name)}</div>
+
+        <div class="ometa">
+
+          <span>DOT ${c.dot}</span>
+
+          <span>${c.city ? h(c.city) + ', ' : ''}${c.state}</span>
+
+          <span>${c.phone || 'no phone'}</span>
+
+          <span>Added ${c.addedAt}</span>
+
+          <span style="color:#3db55d;font-weight:700;">✅ Onboarded</span>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  `).join('');
 
 }
 
