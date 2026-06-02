@@ -130,7 +130,7 @@
 
   /* ── Stats ── */
 
-  .stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 20px 28px 0; }
+  .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; padding: 20px 28px 0; }
 
   .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; box-shadow: var(--shadow); }
 
@@ -530,13 +530,25 @@
 
     </div>
 
-    <div class="stats-bar">
+    <div class="stats-bar" id="stats-search">
 
       <div class="stat-card"><div class="stat-label">Active Carriers Found</div><div class="stat-value c-blue" id="sf">—</div></div>
 
       <div class="stat-card"><div class="stat-label">Cities Covered</div><div class="stat-value c-orange" id="sc">—</div></div>
 
       <div class="stat-card"><div class="stat-label">Outreach List</div><div class="stat-value c-pink" id="so">0</div></div>
+
+    </div>
+
+    <div class="stats-bar" id="stats-outreach" style="display:none;">
+
+      <div class="stat-card"><div class="stat-label">Outreach List Total</div><div class="stat-value c-blue" id="ot-total">0</div></div>
+
+      <div class="stat-card"><div class="stat-label">Identified</div><div class="stat-value c-orange" id="ot-identified">0</div></div>
+
+      <div class="stat-card"><div class="stat-label">Contacted</div><div class="stat-value c-pink" id="ot-contacted">0</div></div>
+
+      <div class="stat-card"><div class="stat-label">Onboarded</div><div class="stat-value" style="color:var(--green);" id="ot-onboarded">0</div></div>
 
     </div>
 
@@ -984,6 +996,12 @@ function showPanel(name, btn) {
   const titles = { search: 'Carrier Search', map: 'State Map', outreach: 'Outreach List' };
 
   document.getElementById('ph').textContent = titles[name] || 'Carrier Search';
+
+  const isOutreach = name === 'outreach';
+
+  document.getElementById('stats-search').style.display  = isOutreach ? 'none' : '';
+
+  document.getElementById('stats-outreach').style.display = isOutreach ? '' : 'none';
 
   if (name === 'outreach') renderOutreach();
 
@@ -1721,6 +1739,12 @@ function renderOutreach(){
   const list=document.getElementById('outreach-list');
 
   const lbl=document.getElementById('otl');
+
+  // Update outreach stat cards
+  document.getElementById('ot-total').textContent      = outreachList.length;
+  document.getElementById('ot-identified').textContent = outreachList.filter(c=>(c.status||'identified')==='identified').length;
+  document.getElementById('ot-contacted').textContent  = outreachList.filter(c=>c.status==='contacted').length;
+  document.getElementById('ot-onboarded').textContent  = outreachList.filter(c=>c.status==='onboarded').length;
 
   if(!outreachList.length){
 
