@@ -781,12 +781,12 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export CSV
 
             </button>
-<!--
+
             <button class="btn btn-ghost" id="resync-btn" onclick="resyncAllCarriers()" style="border-color:var(--purple);color:var(--purple);">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
               Re-sync Data
             </button>
--->
+
             <button class="btn btn-danger" onclick="clearOutreach()">
 
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>Clear All
@@ -1932,15 +1932,17 @@ function exportOutreach(){
 function exportNetwork(){
   const onboarded = outreachList.filter(c => c.status === 'onboarded' || c.status === 'trusted');
   if(!onboarded.length){showToast('No onboarded carriers to export');return;}
-  const rows=[['DOT#','Name','City','State','Phone','Status','Lanes','Added']];
+  const rows=[['DOT#','MC Number','Name','City','State','Phone','Status','Lane Origin','Lane Destination','Added Date']];
   for(const c of onboarded){
+    const mc = c.mc ? 'MC-' + c.mc : '';
     const lanes = (() => { try { return JSON.parse(localStorage.getItem('lanes_' + c.dot) || '[]'); } catch(err) { return []; } })();
     if(!lanes.length){
-      rows.push([c.dot,e(c.name),e(c.city||''),c.state,c.phone||'',c.status,'',c.addedAt]);
+      rows.push([c.dot, mc, e(c.name), e(c.city||''), c.state, c.phone||'', c.status, '', '', c.addedAt]);
     } else {
       lanes.forEach(l => {
-        const lane = [l.originCity,l.originState].filter(Boolean).join(', ') + ' → ' + [l.destCity,l.destState].filter(Boolean).join(', ');
-        rows.push([c.dot,e(c.name),e(c.city||''),c.state,c.phone||'',c.status,lane,c.addedAt]);
+        const origin = [l.originCity, l.originState].filter(Boolean).join(', ');
+        const dest   = [l.destCity,   l.destState  ].filter(Boolean).join(', ');
+        rows.push([c.dot, mc, e(c.name), e(c.city||''), c.state, c.phone||'', c.status, origin, dest, c.addedAt]);
       });
     }
   }
