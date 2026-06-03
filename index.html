@@ -524,17 +524,7 @@
 
       </div>
 
-      <div style="display:flex;gap:8px;">
 
-        <button class="btn btn-ghost" onclick="exportResults()">
-
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-
-          Export CSV
-
-        </button>
-
-      </div>
 
     </div>
 
@@ -859,6 +849,11 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
 
           <div style="font-size:13px;font-weight:700;color:var(--text2);" id="network-lbl">Onboarded Carriers</div>
+
+          <button class="btn btn-ghost" onclick="exportNetwork()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV
+          </button>
 
         </div>
 
@@ -1926,6 +1921,25 @@ function exportOutreach(){
 
   showToast(`Exported ${outreachList.length} carriers`);
 
+}
+
+function exportNetwork(){
+  const onboarded = outreachList.filter(c => c.status === 'onboarded' || c.status === 'trusted');
+  if(!onboarded.length){showToast('No onboarded carriers to export');return;}
+  const rows=[['DOT#','Name','City','State','Phone','Status','Lanes','Added']];
+  for(const c of onboarded){
+    const lanes = (() => { try { return JSON.parse(localStorage.getItem('lanes_' + c.dot) || '[]'); } catch(err) { return []; } })();
+    if(!lanes.length){
+      rows.push([c.dot,e(c.name),e(c.city||''),c.state,c.phone||'',c.status,'',c.addedAt]);
+    } else {
+      lanes.forEach(l => {
+        const lane = [l.originCity,l.originState].filter(Boolean).join(', ') + ' → ' + [l.destCity,l.destState].filter(Boolean).join(', ');
+        rows.push([c.dot,e(c.name),e(c.city||''),c.state,c.phone||'',c.status,lane,c.addedAt]);
+      });
+    }
+  }
+  dlCSV(rows,`network_${today()}.csv`);
+  showToast(`Exported ${onboarded.length} carriers`);
 }
 
 function dlCSV(rows,fn){const csv=rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=fn;a.click();}
