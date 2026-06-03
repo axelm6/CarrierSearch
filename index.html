@@ -1243,23 +1243,9 @@ async function runSearch(offsetStart) {
 
   try {
 
-    let url;
-
-    if (nameKw) {
-
-      // Keyword search fallback
-
-      url = `/api/carriers?name=${encodeURIComponent(nameKw)}&limit=1000&offset=${offsetStart}`;
-
-    } else {
-
-      // Direct state query — fast, accurate, full database
-
-      const entityType = document.getElementById('auth-filter').value;
-
-      url = `/api/carriers?state=${encodeURIComponent(state)}&limit=2000&offset=${offsetStart}&entityType=${entityType}`;
-
-    }
+    // Always query by state — name keyword is applied client-side after results arrive
+    const entityType = document.getElementById('auth-filter').value;
+    const url = `/api/carriers?state=${encodeURIComponent(state)}&limit=2000&offset=${offsetStart}&entityType=${entityType}`;
 
     const r = await fetch(url);
 
@@ -1276,8 +1262,14 @@ async function runSearch(offsetStart) {
       if (!dot || seen.has(dot)) continue;
 
       // City filter
-
       if (city && !(c.phyCity || '').toLowerCase().includes(city)) continue;
+
+      // Name keyword filter (client-side, scoped to the already state-filtered results)
+      if (nameKw) {
+        const legalName = (c.legalName || '').toLowerCase();
+        const dbaName   = (c.dbaName   || '').toLowerCase();
+        if (!legalName.includes(nameKw) && !dbaName.includes(nameKw)) continue;
+      }
 
       // Exclude pure brokers via classdef
 
