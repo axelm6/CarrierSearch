@@ -1514,51 +1514,18 @@ function renderTable(carriers, page, pgSz, filteredTotal) {
 
     const mc       = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
 
-    const mcSt     = (c.mcAuthorityStatus || '').toUpperCase();
+    // MC Authority badge starts as "Checking…" — live-verified after render
+    const mcAuthCell = mc
+      ? `<div style="display:flex;flex-direction:column;gap:2px;" id="mc-cell-${dot}">
+          <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);">MC-${mc}</span>
+          <span class="badge" style="width:fit-content;background:var(--surface2);color:var(--text3);border:1px solid var(--border);">
+            <span class="qual-loading" style="margin-right:4px;"></span>Checking
+          </span>
+        </div>`
+      : `<span style="color:var(--text3);font-size:12px;">—</span>`;
 
-    const mcActive = mcSt === 'A';
-
-    const mcPend   = mcSt === 'P';
-
-    // Single MC Authority cell — MC number + status badge in one column
-
-    let mcAuthCell;
-
-    if (!mc) {
-
-      mcAuthCell = `<span style="color:var(--text3);font-size:12px;">—</span>`;
-
-    } else if (mcActive) {
-
-      mcAuthCell = `<div style="display:flex;flex-direction:column;gap:2px;">
-
-        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);">MC-${mc}</span>
-
-        <span class="badge badge-active" style="width:fit-content;">Active</span>
-
-      </div>`;
-
-    } else if (mcPend) {
-
-      mcAuthCell = `<div style="display:flex;flex-direction:column;gap:2px;">
-
-        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--amber);">MC-${mc}</span>
-
-        <span class="badge badge-pending" style="width:fit-content;">Pending</span>
-
-      </div>`;
-
-    } else {
-
-      mcAuthCell = `<div style="display:flex;flex-direction:column;gap:2px;">
-
-        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--red);">MC-${mc}</span>
-
-        <span class="badge badge-inactive" style="width:fit-content;">Inactive</span>
-
-      </div>`;
-
-    }
+    // Row tint is neutral until verified
+    const mcActive = false; // placeholder — real value set after live check
 
     const isSaved = saved.has(dot);
 
@@ -1620,7 +1587,11 @@ function renderTable(carriers, page, pgSz, filteredTotal) {
 
   const pRow = document.getElementById('pag-row');
 
-  if (totalPages <= 1) { pRow.style.display = 'none'; return; }
+  if (totalPages <= 1) {
+    pRow.style.display = 'none';
+    verifyPageAuthority(carriers);
+    return;
+  }
 
   pRow.style.display = 'flex';
 
@@ -1640,6 +1611,61 @@ function renderTable(carriers, page, pgSz, filteredTotal) {
 
   pRow.innerHTML = btns;
 
+  // Kick off live authority verification for the visible page
+  verifyPageAuthority(carriers);
+
+}
+
+// ── Live-verify MC authority for all carriers on the current page ────
+async function verifyPageAuthority(carriers) {
+  // Fire all requests in parallel, update each cell as results arrive
+  await Promise.all(carriers.map(async (c) => {
+    const dot = String(c.dotNumber || c.dot || '');
+    const mc  = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
+    if (!dot || !mc) return; // no MC number — nothing to verify
+
+    try {
+      const auth = await fetch(`/api/authority?dot=${dot}`).then(r => r.json());
+      const ca   = (auth.commonAuthorityStatus  || '').toUpperCase();
+      const ct   = (auth.contractAuthorityStatus || '').toUpperCase();
+      const oos  = auth.outOfServiceDate || '';
+
+      let badgeHtml, rowTint;
+      if (ca === 'A' || ct === 'A') {
+        badgeHtml = `<span class="badge badge-active" style="width:fit-content;">Active ✓</span>`;
+        rowTint   = '';
+      } else if (ca === 'P' || ct === 'P') {
+        badgeHtml = `<span class="badge badge-pending" style="width:fit-content;">Pending</span>`;
+        rowTint   = 'rgba(176,122,16,0.04)';
+      } else if (oos) {
+        badgeHtml = `<span class="badge badge-inactive" style="width:fit-content;">Out of Service</span>`;
+        rowTint   = 'rgba(192,53,53,0.05)';
+      } else {
+        badgeHtml = `<span class="badge badge-inactive" style="width:fit-content;">Inactive ✗</span>`;
+        rowTint   = 'rgba(192,53,53,0.05)';
+      }
+
+      // Update the MC cell if still in DOM
+      const cell = document.getElementById(`mc-cell-${dot}`);
+      if (cell) {
+        cell.innerHTML = `
+          <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);">MC-${mc}</span>
+          ${badgeHtml}`;
+      }
+
+      // Update row background tint
+      const rows = document.querySelectorAll('tbody tr');
+      for (const row of rows) {
+        const dotLink = row.querySelector('td:first-child a');
+        if (dotLink && dotLink.textContent.trim() === dot) {
+          row.style.background = rowTint;
+          break;
+        }
+      }
+    } catch(e) {
+      // On error leave as-is — fail silently
+    }
+  }));
 }
 
 function updateCombinedMapStats() {
