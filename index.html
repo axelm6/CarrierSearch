@@ -1093,7 +1093,6 @@ async function runRegionSearch(states, regionLabel) {
 
   allResults = [];
 
-  qcFilter = 'all';
 
   const seen = new Set();
 
@@ -1211,7 +1210,7 @@ async function runSearch(offsetStart) {
 
   offsetStart  = offsetStart || 0;
 
-  if (offsetStart === 0) { allResults = []; qcFilter = 'all'; }
+  if (offsetStart === 0) { allResults = []; }
 
   const seen = new Set(allResults.map(c => String(c.dotNumber)));
 
@@ -1366,91 +1365,14 @@ function loadMore(offset) {
 
 // QC filter state
 
-let qcFilter = 'all';
+function getFilteredResults() { return allResults; }
 
-function applyQcFilter(val) {
-
-  qcFilter = val;
-
-  const pgSz = parseInt(document.getElementById('page-size').value);
-
-  renderPage(0, pgSz);
-
-}
-
-function getFilteredResults() {
-
-  if (qcFilter === 'all') return allResults;
-
-  return allResults.filter(c => {
-
-    // MC authority NOT active — census docket status is not 'A'
-
-    // This is the same data Carrier411 uses for its authority check
-
-    if (qcFilter === 'mc-not-active') {
-
-      const s = (c.mcAuthorityStatus || '').toUpperCase();
-
-      return s !== 'A';
-
-    }
-
-    // MC authority confirmed active
-
-    if (qcFilter === 'mc-active') {
-
-      const s = (c.mcAuthorityStatus || '').toUpperCase();
-
-      return s === 'A';
-
-    }
-
-    return true;
-
-  });
-
-}
-
-function qcFilterBar() {
-
-  const opts = [
-
-    { val: 'all',          label: 'All carriers' },
-
-    { val: 'mc-active',    label: '✅ MC Authority — Active' },
-
-    { val: 'mc-not-active',label: '❌ MC Authority — Not Active' },
-
-  ];
-
-  const active = qcFilter !== 'all';
-
-  return `<div style="display:flex;align-items:center;gap:6px;">
-
-    <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:0.08em;white-space:nowrap;">MC AUTHORITY</span>
-
-    <div class="sel-wrap" style="min-width:210px;">
-
-      <select onchange="applyQcFilter(this.value)" style="background:var(--surface2);border:1px solid ${active?'var(--pink)':'var(--border)'};color:${active?'var(--pink)':'var(--text)'};border-radius:var(--radius);padding:6px 28px 6px 10px;font-size:12px;font-family:'Nunito',sans-serif;font-weight:700;appearance:none;outline:none;width:100%;cursor:pointer;">
-
-        ${opts.map(o => `<option value="${o.val}" ${qcFilter===o.val?'selected':''}>${o.label}</option>`).join('')}
-
-      </select>
-
-    </div>
-
-  </div>`;
-
-}
 
 function renderPage(page, pgSz) {
 
-  const filtered = getFilteredResults();
+  const slice = allResults.slice(page * pgSz, (page + 1) * pgSz);
 
-  const slice = filtered.slice(page * pgSz, (page + 1) * pgSz);
-
-  renderTable(slice, page, pgSz, filtered.length);
+  renderTable(slice, page, pgSz, allResults.length);
 
 }
 
@@ -1478,7 +1400,7 @@ function renderTable(carriers, page, pgSz, filteredTotal) {
 
     area.innerHTML = `
 
-      <div class="results-hdr">${qcFilterBar()}</div>
+      <div class="results-hdr"></div>
 
       <div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
 
@@ -1498,7 +1420,7 @@ function renderTable(carriers, page, pgSz, filteredTotal) {
 
   const label = city ? `${state} · ${h(city)}` : (state || 'all states');
 
-  const filterNote = qcFilter !== 'all' ? ` <span style="color:var(--amber);font-weight:800;">(filtered: ${total} of ${allResults.length})</span>` : ``;
+  const filterNote = '';
 
   const rows = carriers.map(c => {
 
@@ -1557,11 +1479,9 @@ function renderTable(carriers, page, pgSz, filteredTotal) {
 
       <div style="display:flex;gap:8px;align-items:center;">
 
-        ${qcFilterBar()}
-
         <button class="btn btn-ghost" style="font-size:12px;padding:5px 12px;" onclick="exportResults()">
 
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export ${qcFilter !== 'all' ? total : allResults.length}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export ${allResults.length}
 
         </button>
 
@@ -1986,7 +1906,7 @@ function exportResults(){
 
   const rows=[['DOT#','Legal Name','City','State','Phone','MC#','MC Authority'],
 
-    ...getFilteredResults().map(c=>[c.dotNumber||'',e(c.legalName||c.dbaName||''),e(c.phyCity||''),c.phyState||'',fmt(c.telephone||c.phone||''),c.docketNumber?'MC-'+c.docketNumber:'',authLabel(c.mcAuthorityStatus)])];
+    ...allResults.map(c=>[c.dotNumber||'',e(c.legalName||c.dbaName||''),e(c.phyCity||''),c.phyState||'',fmt(c.telephone||c.phone||''),c.docketNumber?'MC-'+c.docketNumber:'',authLabel(c.mcAuthorityStatus)])];
 
   dlCSV(rows,`carriers_${stateSel.value}_${today()}.csv`);
 
