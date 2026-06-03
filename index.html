@@ -782,6 +782,11 @@
 
             </button>
 
+            <button class="btn btn-ghost" id="resync-btn" onclick="resyncAllCarriers()" style="border-color:var(--purple);color:var(--purple);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Re-sync Data
+            </button>
+
             <button class="btn btn-danger" onclick="clearOutreach()">
 
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>Clear All
@@ -1941,6 +1946,72 @@ function exportNetwork(){
   }
   dlCSV(rows,`network_${today()}.csv`);
   showToast(`Exported ${onboarded.length} carriers`);
+}
+
+async function resyncAllCarriers() {
+  if (!outreachList.length) { showToast('No carriers to sync'); return; }
+
+  const btn = document.getElementById('resync-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Syncing…'; }
+
+  let updated = 0;
+  let failed  = 0;
+  const total = outreachList.length;
+
+  showToast(`Syncing ${total} carriers…`);
+
+  // Process in batches of 10 to avoid hammering the API
+  for (let i = 0; i < outreachList.length; i += 10) {
+    const batch = outreachList.slice(i, i + 10);
+
+    await Promise.all(batch.map(async (carrier) => {
+      try {
+        const url = `https://data.transportation.gov/resource/az4n-8mr2.json?$where=dot_number='${encodeURIComponent(carrier.dot)}'&$limit=1`;
+        const res  = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        const data = await res.json();
+        const c    = Array.isArray(data) && data[0];
+        if (!c) { failed++; return; }
+
+        // Pick active MC docket, same logic as backend
+        const mcNum =
+          (c.docket1prefix === 'MC' && c.docket1_status_code === 'A') ? c.docket1 :
+          (c.docket2prefix === 'MC' && c.docket2_status_code === 'A') ? c.docket2 :
+          (c.docket3prefix === 'MC' && c.docket3_status_code === 'A') ? c.docket3 :
+          (c.docket1prefix === 'MC') ? c.docket1 :
+          (c.docket2prefix === 'MC') ? c.docket2 :
+          (c.docket3prefix === 'MC') ? c.docket3 : '';
+
+        // Update carrier record in place — preserve notes, status, addedAt
+        carrier.name       = c.legal_name        || carrier.name;
+        carrier.city       = c.phy_city           || carrier.city;
+        carrier.state      = c.phy_state          || carrier.state;
+        carrier.phone      = c.phone              || carrier.phone;
+        carrier.mc         = mcNum                || carrier.mc;
+        carrier.powerUnits = c.power_units        || '';
+        carrier.drivers    = c.total_drivers      || '';
+        carrier.classdef   = c.classdef           || '';
+
+        updated++;
+      } catch(err) {
+        failed++;
+      }
+    }));
+
+    // Update button progress
+    const done = Math.min(i + 10, total);
+    if (btn) btn.textContent = `Syncing… ${done}/${total}`;
+  }
+
+  saveOutreach();
+  renderOutreach();
+  renderNetworkList();
+
+  if (btn) {
+    btn.disabled    = false;
+    btn.textContent = 'Re-sync Data';
+  }
+
+  showToast(`Sync complete — ${updated} updated, ${failed} not found`);
 }
 
 function dlCSV(rows,fn){const csv=rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=fn;a.click();}
