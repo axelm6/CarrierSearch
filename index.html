@@ -1077,6 +1077,7 @@ function showPanel(name, btn) {
   if (name === 'map')     initMap();
 
   if (name === 'network') { initNetworkMap(); renderNetworkList(); setTimeout(() => { if (window.networkLeafletMap) window.networkLeafletMap.invalidateSize(); }, 50); }
+  window.activePanel = name;
 
 }
 
@@ -2060,6 +2061,7 @@ function quickRegion(leadState, city) {
 
 }
 
+window.activePanel = 'search';
 window.addEventListener('load', () => { setTimeout(initInlineMap, 100); buildRegionList(); });
 
 async function searchAllUS() {
@@ -2172,44 +2174,42 @@ let currentDetailCarrier = null;
 
 function openDetailByDot(dot) {
 
-  // Look in search results first, fall back to outreach list
-
+  // Look in search results first (has full FMCSA data)
   let carrier = allResults.find(c => String(c.dotNumber) === String(dot));
 
   if (!carrier) {
-
+    // Fall back to outreachList — map stored fields back to FMCSA shape
     const oc = outreachList.find(c => String(c.dot) === String(dot));
-
-    if (oc) carrier = { dotNumber: oc.dot, legalName: oc.name, phyCity: oc.city, phyState: oc.state, telephone: oc.phone, docketNumber: oc.mc || '' };
-
+    if (oc) {
+      carrier = {
+        dotNumber:       oc.dot,
+        legalName:       oc.name,
+        phyCity:         oc.city       || '',
+        phyState:        oc.state      || '',
+        telephone:       oc.phone      || '',
+        docketNumber:    oc.mc         || '',
+        totalPowerUnits: oc.powerUnits || '',
+        totalDrivers:    oc.drivers    || '',
+        classdef:        oc.classdef   || '',
+        statusCode:      'A',
+      };
+    }
   }
 
   if (!carrier) return;
 
   openDetail({
-
-    dotNumber: String(carrier.dotNumber || ''),
-
-    legalName: carrier.legalName || carrier.dbaName || '—',
-
-    dbaName: carrier.dbaName || '',
-
-    phyCity: carrier.phyCity || '',
-
-    phyState: carrier.phyState || '',
-
-    telephone: carrier.telephone || '',
-
-    docketNumber: carrier.docketNumber || '',
-
-    totalPowerUnits: carrier.totalPowerUnits || '',
-
-    totalDrivers: carrier.totalDrivers || '',
-
-    classdef: carrier.classdef || '',
-
-    statusCode: carrier.statusCode || 'A',
-
+    dotNumber:       String(carrier.dotNumber || ''),
+    legalName:       carrier.legalName || carrier.dbaName || '—',
+    dbaName:         carrier.dbaName        || '',
+    phyCity:         carrier.phyCity        || '',
+    phyState:        carrier.phyState       || '',
+    telephone:       carrier.telephone      || '',
+    docketNumber:    carrier.docketNumber   || '',
+    totalPowerUnits: carrier.totalPowerUnits|| '',
+    totalDrivers:    carrier.totalDrivers   || '',
+    classdef:        carrier.classdef       || '',
+    statusCode:      carrier.statusCode     || 'A',
   });
 
 }
@@ -2250,15 +2250,23 @@ function openDetail(carrier) {
 
   renderDetailPanel(carrier);
 
-  // Update add button state
-
+  // Update add button state based on which panel is active
   const isSaved = outreachList.find(c => c.dot === dot);
+  const addBtn  = document.getElementById('dp-add-btn');
+  const panel   = window.activePanel || 'search';
 
-  const addBtn = document.getElementById('dp-add-btn');
-
-  addBtn.textContent = isSaved ? '✓ Already in Outreach' : '+ Add to Outreach';
-
-  addBtn.disabled = !!isSaved;
+  if (panel === 'network') {
+    // From Our Network — carrier is already onboarded, no add button needed
+    addBtn.style.display = 'none';
+  } else if (panel === 'outreach') {
+    // From Outreach List — already saved, no need to re-add
+    addBtn.style.display = 'none';
+  } else {
+    // From Carrier Search — show add button
+    addBtn.style.display = '';
+    addBtn.textContent   = isSaved ? '✓ Already in Outreach' : '+ Add to Outreach';
+    addBtn.disabled      = !!isSaved;
+  }
 
 }
 
@@ -3289,6 +3297,12 @@ function renderNetworkList() {
           <span>${c.city ? h(c.city) + ', ' : ''}${c.state}</span>
 
           <span>${c.phone || 'no phone'}</span>
+
+          ${c.mc?`<span>MC-${c.mc}</span>`:''}
+
+          ${c.powerUnits?`<span>🚛 ${c.powerUnits} units</span>`:''}
+
+          ${c.drivers?`<span>👤 ${c.drivers} drivers</span>`:''}
 
         </div>
 
