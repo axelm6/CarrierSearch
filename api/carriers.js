@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
 
   const { state, name } = req.query;
   const entityType = req.query.entityType || 'carriers';
-  const limit  = parseInt(req.query.limit)  || 2000;
+  const limit  = parseInt(req.query.limit)  || 50000;
   const offset = parseInt(req.query.offset) || 0;
 
   if (state) {
