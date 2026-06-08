@@ -286,6 +286,17 @@
         </div>
         <div class="search-panel">
           <div class="panel-label">Search by carrier location</div>
+
+          <!-- ── USDOT direct lookup ── -->
+          <div style="background:var(--accent-light);border:1px solid rgba(50,170,225,0.25);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div style="font-size:11px;font-weight:700;color:var(--accent-dark);white-space:nowrap;font-family:'DM Mono',monospace;letter-spacing:0.04em;">🔍 LOOKUP BY USDOT #</div>
+            <input type="text" id="inp-dot" placeholder="e.g. 2097418" style="flex:1;min-width:140px;background:var(--surface);border:1px solid var(--border2);color:var(--text);border-radius:var(--radius);padding:7px 12px;font-size:13px;font-family:'DM Mono',monospace;font-weight:600;outline:none;" />
+            <button class="btn btn-primary" onclick="searchByDot()" style="padding:7px 16px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              Lookup
+            </button>
+          </div>
+
           <div class="loc-row">
             <div class="field">
               <label>State (required)</label>
@@ -2015,6 +2026,79 @@ function updateStateCount(code, count) {
   refreshMapColors();
   refreshInlineMap();
 }
+
+// ── Search by USDOT number directly ─────────────────────────────────
+async function searchByDot() {
+  const raw = (document.getElementById('inp-dot').value || '').trim().replace(/\D/g, '');
+  if (!raw) { showToast('Enter a USDOT number'); return; }
+
+  document.getElementById('results-area').innerHTML = `
+    <div class="state-box">
+      <div class="spinner"></div>
+      <div class="st">Looking up DOT ${raw}…</div>
+      <div class="ss" style="font-family:'DM Mono',monospace;font-size:11px;">Querying FMCSA…</div>
+    </div>`;
+  document.getElementById('pag-row').style.display = 'none';
+  document.getElementById('s-status').textContent = '';
+
+  try {
+    // Query Socrata directly by DOT number — no state needed
+    const socrata = await fetch(
+      `https://data.transportation.gov/resource/az4n-8mr2.json?$where=dot_number='${raw}'&$limit=1`,
+      { headers: { 'Accept': 'application/json' } }
+    ).then(r => r.json());
+
+    if (!Array.isArray(socrata) || !socrata.length) {
+      document.getElementById('results-area').innerHTML = `
+        <div class="state-box">
+          <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
+          <div class="st">DOT ${raw} not found</div>
+          <div class="ss">Check the number and try again, or search by state above.</div>
+        </div>`;
+      return;
+    }
+
+    const c = socrata[0];
+    const mcNum =
+      (c.docket1prefix === 'MC' && c.docket1_status_code === 'A') ? c.docket1 :
+      (c.docket2prefix === 'MC' && c.docket2_status_code === 'A') ? c.docket2 :
+      (c.docket3prefix === 'MC' && c.docket3_status_code === 'A') ? c.docket3 :
+      (c.docket1prefix === 'MC') ? c.docket1 :
+      (c.docket2prefix === 'MC') ? c.docket2 :
+      (c.docket3prefix === 'MC') ? c.docket3 : '';
+
+    // Open the full detail panel with all data from Socrata
+    openDetail({
+      dotNumber:       raw,
+      legalName:       c.legal_name  || '—',
+      dbaName:         c.dba_name    || '',
+      phyCity:         c.phy_city    || '',
+      phyState:        c.phy_state   || '',
+      telephone:       c.phone       || '',
+      docketNumber:    mcNum,
+      totalPowerUnits: c.power_units   || '',
+      totalDrivers:    c.total_drivers || '',
+      classdef:        c.classdef      || '',
+      statusCode:      c.status_code   || '',
+    });
+
+    document.getElementById('results-area').innerHTML = `
+      <div class="state-box" style="border-color:rgba(50,170,225,0.3);">
+        <div class="si" style="background:var(--accent-light);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </div>
+        <div class="st">DOT ${raw} — ${h(c.legal_name || '—')}</div>
+        <div class="ss">${h(c.phy_city || '')}${c.phy_city ? ', ' : ''}${c.phy_state || ''} · Detail panel open on the right →</div>
+      </div>`;
+
+  } catch(err) {
+    document.getElementById('results-area').innerHTML = `
+      <div class="state-box"><div class="st">Lookup failed</div><div class="ss">${err.message}</div></div>`;
+  }
+}
+
+// Enter key on DOT input
+document.getElementById('inp-dot').addEventListener('keydown', e => { if (e.key === 'Enter') searchByDot(); });
 
 // Init
 updOC(); updSP();
