@@ -1543,75 +1543,51 @@ function renderTable(carriers, page, pgSz, filteredTotal) {
 
 // ── Live-verify MC authority for all carriers on the current page ────
 async function verifyPageAuthority(carriers) {
-  // Process sequentially in small batches to avoid overloading /api/authority
-  // Show a loading indicator on the results count while verifying
-  const countEl = document.querySelector('.results-count');
-  if (countEl) countEl.innerHTML += ' <span id="verify-status" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">· verifying authority…</span>';
+  await Promise.all(carriers.map(async (c) => {
+    const dot = String(c.dotNumber || c.dot || '');
+    const mc  = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
+    if (!dot || !mc) return;
 
-  let checked = 0;
-  const total = carriers.filter(c => (c.docketNumber && c.docketNumber !== '0')).length;
+    try {
+      const auth = await fetch(`/api/authority?dot=${dot}`).then(r => r.json()).catch(() => ({}));
+      const ca   = (auth.commonAuthorityStatus  || '').toUpperCase();
+      const ct   = (auth.contractAuthorityStatus || '').toUpperCase();
 
-  // Process in batches of 8 — fast but not overwhelming
-  for (let i = 0; i < carriers.length; i += 8) {
-    const batch = carriers.slice(i, i + 8);
+      // Only hide if EXPLICITLY confirmed inactive — 'I' is the only reliable signal
+      // Empty string, unknown, or API error = leave row visible
+      const confirmedInactive = (ca === 'I' && ct !== 'A') || (ct === 'I' && ca !== 'A');
 
-    await Promise.all(batch.map(async (c) => {
-      const dot = String(c.dotNumber || c.dot || '');
-      const mc  = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
-      if (!dot || !mc) return;
-
-      try {
-        const auth = await fetch(`/api/authority?dot=${dot}`).then(r => r.json());
-        const ca   = (auth.commonAuthorityStatus  || '').toUpperCase();
-        const ct   = (auth.contractAuthorityStatus || '').toUpperCase();
-
-        // Only act if we got a real confirmed status back
-        // Empty string = API returned nothing useful — leave row visible
-        const hasResponse = ca !== '' || ct !== '';
-        if (!hasResponse) return;
-
-        const isActive  = ca === 'A' || ct === 'A';
-        const isPending = ca === 'P' || ct === 'P';
-        // isInactive only if we EXPLICITLY got I, N, or other non-A/P value
-        const isInactive = hasResponse && !isActive && !isPending;
-
-        if (isInactive) {
-          // Hide row — confirmed inactive by live check
-          const tableRows = document.querySelectorAll('tbody tr');
-          for (const row of tableRows) {
-            const dotLink = row.querySelector('td:first-child a');
-            if (dotLink && dotLink.textContent.trim() === dot) {
-              row.style.display = 'none';
-              break;
-            }
+      if (confirmedInactive) {
+        const tableRows = document.querySelectorAll('tbody tr');
+        for (const row of tableRows) {
+          const dotLink = row.querySelector('td:first-child a');
+          if (dotLink && dotLink.textContent.trim() === dot) {
+            row.style.display = 'none';
+            break;
           }
-          return;
         }
-
-        // Active or Pending — update badge
-        const badgeHtml = isActive
-          ? `<span class="badge badge-active" style="width:fit-content;">Active ✓</span>`
-          : `<span class="badge badge-pending" style="width:fit-content;">Pending</span>`;
-
-        const cell = document.getElementById(`mc-cell-${dot}`);
-        if (cell) {
-          cell.innerHTML = `
-            <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);">MC-${mc}</span>
-            ${badgeHtml}`;
-        }
-      } catch(e) {
-        // API error — leave row visible, fail safe
+        return;
       }
 
-      checked++;
-      const vs = document.getElementById('verify-status');
-      if (vs) vs.textContent = `· verifying ${checked}/${total}…`;
-    }));
-  }
+      // Update badge for known statuses
+      const isActive  = ca === 'A' || ct === 'A';
+      const isPending = ca === 'P' || ct === 'P';
+      if (!isActive && !isPending) return; // unknown — leave Checking badge as-is
 
-  // Done — remove the verifying indicator
-  const vs = document.getElementById('verify-status');
-  if (vs) vs.remove();
+      const badgeHtml = isActive
+        ? `<span class="badge badge-active" style="width:fit-content;">Active ✓</span>`
+        : `<span class="badge badge-pending" style="width:fit-content;">Pending</span>`;
+
+      const cell = document.getElementById(`mc-cell-${dot}`);
+      if (cell) {
+        cell.innerHTML = `
+          <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);">MC-${mc}</span>
+          ${badgeHtml}`;
+      }
+    } catch(e) {
+      // API error — leave row and badge as-is
+    }
+  }));
 }
 
 function updateCombinedMapStats() {
