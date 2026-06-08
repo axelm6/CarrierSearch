@@ -1167,7 +1167,7 @@ async function runRegionSearch(states, regionLabel) {
 
   updateStats(allResults);
 
-  renderPage(0, pgSz);
+  await verifyThenRender(pgSz, regionLabel);
 
   document.getElementById('s-status').textContent = `✓ ${allResults.length} carriers in ${regionLabel}`;
 
@@ -1308,7 +1308,8 @@ async function runSearch(offsetStart) {
 
     } else {
 
-      renderPage(0, pgSz);
+      // Show verifying screen, then render only confirmed-active carriers
+      await verifyThenRender(pgSz, state);
 
     }
 
@@ -1441,18 +1442,28 @@ function renderTable(carriers, page, pgSz, filteredTotal) {
 
     const mc       = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
 
-    // MC Authority badge starts as "Checking…" — live-verified after render
-    const mcAuthCell = mc
-      ? `<div style="display:flex;flex-direction:column;gap:2px;" id="mc-cell-${dot}">
-          <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);">MC-${mc}</span>
-          <span class="badge" style="width:fit-content;background:var(--surface2);color:var(--text3);border:1px solid var(--border);">
-            <span class="qual-loading" style="margin-right:4px;"></span>Checking
-          </span>
-        </div>`
-      : `<span style="color:var(--text3);font-size:12px;">—</span>`;
-
-    // Row tint is neutral until verified
-    const mcActive = false; // placeholder — real value set after live check
+    // MC Authority badge — status already verified before table renders
+    const _authSt = c._authorityStatus || '';
+    let mcAuthCell;
+    if (!mc) {
+      mcAuthCell = `<span style="color:var(--text3);font-size:12px;">—</span>`;
+    } else if (_authSt === 'A') {
+      mcAuthCell = `<div style="display:flex;flex-direction:column;gap:2px;">
+        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);">MC-${mc}</span>
+        <span class="badge badge-active" style="width:fit-content;">Active ✓</span>
+      </div>`;
+    } else if (_authSt === 'P') {
+      mcAuthCell = `<div style="display:flex;flex-direction:column;gap:2px;">
+        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--amber);">MC-${mc}</span>
+        <span class="badge badge-pending" style="width:fit-content;">Pending</span>
+      </div>`;
+    } else {
+      mcAuthCell = `<div style="display:flex;flex-direction:column;gap:2px;">
+        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);">MC-${mc}</span>
+        <span class="badge" style="width:fit-content;background:var(--surface2);color:var(--text3);border:1px solid var(--border);">—</span>
+      </div>`;
+    }
+    const mcActive = _authSt === 'A';
 
     const isSaved = saved.has(dot);
 
@@ -1514,7 +1525,6 @@ function renderTable(carriers, page, pgSz, filteredTotal) {
 
   if (totalPages <= 1) {
     pRow.style.display = 'none';
-    verifyPageAuthority(carriers);
     return;
   }
 
@@ -1536,58 +1546,81 @@ function renderTable(carriers, page, pgSz, filteredTotal) {
 
   pRow.innerHTML = btns;
 
-  // Kick off live authority verification for the visible page
-  verifyPageAuthority(carriers);
-
 }
 
 // ── Live-verify MC authority for all carriers on the current page ────
-async function verifyPageAuthority(carriers) {
-  await Promise.all(carriers.map(async (c) => {
-    const dot = String(c.dotNumber || c.dot || '');
-    const mc  = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
-    if (!dot || !mc) return;
+async function verifyThenRender(pgSz, label) {
+  const area = document.getElementById('results-area');
+  const total = allResults.length;
 
-    try {
-      const auth = await fetch(`/api/authority?dot=${dot}`).then(r => r.json()).catch(() => ({}));
-      const ca   = (auth.commonAuthorityStatus  || '').toUpperCase();
-      const ct   = (auth.contractAuthorityStatus || '').toUpperCase();
+  // Show verification progress screen
+  area.innerHTML = `
+    <div class="state-box">
+      <div class="spinner"></div>
+      <div class="st">Verifying authority…</div>
+      <div class="ss" id="verify-msg" style="font-family:'DM Mono',monospace;font-size:11px;">
+        Checking ${total} carriers with FMCSA…
+      </div>
+      <div style="height:4px;background:var(--surface2);border-radius:99px;margin:16px auto 0;width:240px;overflow:hidden;">
+        <div id="verify-bar" style="height:100%;background:linear-gradient(90deg,#32AAE1,#786EAF);border-radius:99px;width:0%;transition:width 0.3s ease;"></div>
+      </div>
+    </div>`;
 
-      // Only hide if EXPLICITLY confirmed inactive — 'I' is the only reliable signal
-      // Empty string, unknown, or API error = leave row visible
-      const confirmedInactive = (ca === 'I' && ct !== 'A') || (ct === 'I' && ca !== 'A');
+  // Authority-check all carriers in parallel batches of 10
+  const authorityMap = {}; // dot → { ca, ct }
+  let done = 0;
 
-      if (confirmedInactive) {
-        const tableRows = document.querySelectorAll('tbody tr');
-        for (const row of tableRows) {
-          const dotLink = row.querySelector('td:first-child a');
-          if (dotLink && dotLink.textContent.trim() === dot) {
-            row.style.display = 'none';
-            break;
-          }
-        }
+  for (let i = 0; i < allResults.length; i += 10) {
+    const batch = allResults.slice(i, i + 10);
+    await Promise.all(batch.map(async (c) => {
+      const dot = String(c.dotNumber || '');
+      const mc  = (c.docketNumber && c.docketNumber !== '0') ? c.docketNumber : '';
+      if (!dot || !mc) {
+        authorityMap[dot] = { ca: '', ct: '', noMc: true };
         return;
       }
-
-      // Update badge for known statuses
-      const isActive  = ca === 'A' || ct === 'A';
-      const isPending = ca === 'P' || ct === 'P';
-      if (!isActive && !isPending) return; // unknown — leave Checking badge as-is
-
-      const badgeHtml = isActive
-        ? `<span class="badge badge-active" style="width:fit-content;">Active ✓</span>`
-        : `<span class="badge badge-pending" style="width:fit-content;">Pending</span>`;
-
-      const cell = document.getElementById(`mc-cell-${dot}`);
-      if (cell) {
-        cell.innerHTML = `
-          <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);">MC-${mc}</span>
-          ${badgeHtml}`;
+      try {
+        const auth = await fetch(`/api/authority?dot=${dot}`)
+          .then(r => r.json())
+          .catch(() => ({}));
+        authorityMap[dot] = {
+          ca: (auth.commonAuthorityStatus  || '').toUpperCase(),
+          ct: (auth.contractAuthorityStatus || '').toUpperCase(),
+        };
+      } catch(e) {
+        authorityMap[dot] = { ca: '', ct: '' };
       }
-    } catch(e) {
-      // API error — leave row and badge as-is
-    }
-  }));
+      done++;
+      const pct = Math.round((done / total) * 100);
+      const bar = document.getElementById('verify-bar');
+      const msg = document.getElementById('verify-msg');
+      if (bar) bar.style.width = pct + '%';
+      if (msg) msg.textContent = `Verified ${done} of ${total} carriers…`;
+    }));
+  }
+
+  // Filter: keep only Active, Pending, no-MC (can't verify), or unknown API response
+  // Only drop if EXPLICITLY confirmed inactive (ca=I or ct=I, and neither is A)
+  allResults = allResults.filter(c => {
+    const dot = String(c.dotNumber || '');
+    const r = authorityMap[dot];
+    if (!r || r.noMc) return true; // no MC — keep, can't verify
+    if (!r.ca && !r.ct) return true; // API returned nothing — keep, fail safe
+    const isActive  = r.ca === 'A' || r.ct === 'A';
+    const isPending = r.ca === 'P' || r.ct === 'P';
+    const confirmedInactive = !isActive && !isPending && (r.ca === 'I' || r.ct === 'I');
+    return !confirmedInactive;
+  });
+
+  // Attach authority status to each carrier for badge rendering
+  allResults.forEach(c => {
+    const dot = String(c.dotNumber || '');
+    const r = authorityMap[dot];
+    if (r) c._authorityStatus = (r.ca === 'A' || r.ct === 'A') ? 'A' : (r.ca === 'P' || r.ct === 'P') ? 'P' : '';
+  });
+
+  updateStats(allResults);
+  renderPage(0, pgSz);
 }
 
 function updateCombinedMapStats() {
