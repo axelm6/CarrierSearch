@@ -466,14 +466,6 @@
 
       </button>
 
-      <button class="nav-item" id="nav-network" onclick="showPanel('network',this)">
-
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><circle cx="19" cy="19" r="3"/><circle cx="5" cy="19" r="3"/><path d="M12 8v3m0 0-5.5 5.5M12 11l5.5 5.5"/></svg>
-
-        Our Network
-
-      </button>
-
     </div>
 
     <div class="s-divider"></div>
@@ -819,71 +811,6 @@
 
       </div>
 
-      <!-- Our Network Panel -->
-
-      <div id="panel-network" style="display:none;">
-
-        <div class="grad-bar"></div>
-
-        <!-- Inline map (same as Carrier Search) -->
-
-        <div style="margin-bottom:8px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow);position:relative;z-index:0;">
-
-          <div id="us-map-network" style="width:100%;height:420px;position:relative;z-index:0;"></div>
-
-        </div>
-
-        <!-- Network map legend -->
-        <div style="display:flex;gap:16px;margin-bottom:16px;align-items:center;flex-wrap:wrap;padding:8px 4px;">
-          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
-            <div style="width:14px;height:14px;border-radius:3px;background:#EBF5FB;border:1px solid #ccc;"></div> No activity
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
-            <div style="width:14px;height:14px;border-radius:3px;background:rgba(50,170,225,0.35);border:1px solid #32AAE1;"></div> Origin &amp; destination
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
-            <div style="width:14px;height:14px;border-radius:3px;background:rgba(230,0,128,0.30);border:1px solid #E60080;"></div> Only origin or destination
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
-            <div style="width:14px;height:14px;border-radius:3px;background:rgba(192,53,53,0.28);border:1px solid #c03535;"></div> Onboarded (no lanes)
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">
-            <div style="width:28px;height:3px;background:#32AAE1;border-radius:2px;"></div>
-            <div style="width:8px;height:8px;border-radius:50%;background:#32AAE1;"></div>
-            <div style="width:8px;height:8px;border-radius:50%;background:#E60080;"></div>
-            Lane route
-          </div>
-        </div>
-
-        <!-- Onboarded carriers list -->
-
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
-
-          <div style="font-size:13px;font-weight:700;color:var(--text2);" id="network-lbl">Onboarded Carriers</div>
-
-          <button class="btn btn-ghost" onclick="exportNetwork()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export CSV
-          </button>
-
-        </div>
-
-        <div id="network-list">
-
-          <div class="state-box">
-
-            <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><circle cx="19" cy="19" r="3"/><circle cx="5" cy="19" r="3"/><path d="M12 8v3m0 0-5.5 5.5M12 11l5.5 5.5"/></svg></div>
-
-            <div class="st">No onboarded carriers yet</div>
-
-            <div class="ss">Carriers marked as <strong>Onboarded</strong> in the Outreach List will appear here.</div>
-
-          </div>
-
-        </div>
-
-      </div>
-
     </div>
 
   </div>
@@ -1069,17 +996,13 @@ function showPanel(name, btn) {
 
   document.getElementById('panel-outreach').style.display = name === 'outreach' ? '' : 'none';
 
-  document.getElementById('panel-network').style.display  = name === 'network'  ? '' : 'none';
-
-  const titles = { search: 'Carrier Search', map: 'State Map', outreach: 'Outreach List', network: 'Our Network' };
+  const titles = { search: 'Carrier Search', map: 'State Map', outreach: 'Outreach List' };
 
   document.getElementById('ph').textContent = titles[name] || 'Carrier Search';
 
   const isOutreach = name === 'outreach';
 
-  const isNetwork  = name === 'network';
-
-  document.getElementById('stats-search').style.display   = (!isOutreach && !isNetwork) ? '' : 'none';
+  document.getElementById('stats-search').style.display   = !isOutreach ? '' : 'none';
 
   document.getElementById('stats-outreach').style.display = isOutreach ? '' : 'none';
 
@@ -1087,7 +1010,6 @@ function showPanel(name, btn) {
 
   if (name === 'map')     initMap();
 
-  if (name === 'network') { initNetworkMap(); renderNetworkList(); setTimeout(() => { if (window.networkLeafletMap) window.networkLeafletMap.invalidateSize(); }, 50); }
   window.activePanel = name;
 
 }
@@ -1965,26 +1887,6 @@ function exportOutreach(){
 
 }
 
-function exportNetwork(){
-  const onboarded = outreachList.filter(c => c.status === 'onboarded' || c.status === 'trusted');
-  if(!onboarded.length){showToast('No onboarded carriers to export');return;}
-  const rows=[['DOT#','MC Number','Name','City','State','Phone','Status','Lane Origin','Lane Destination','Added Date']];
-  for(const c of onboarded){
-    const mc = c.mc ? 'MC-' + c.mc : '';
-    const lanes = (() => { try { return JSON.parse(localStorage.getItem('lanes_' + c.dot) || '[]'); } catch(err) { return []; } })();
-    if(!lanes.length){
-      rows.push([c.dot, mc, e(c.name), e(c.city||''), c.state, c.phone||'', c.status, '', '', c.addedAt]);
-    } else {
-      lanes.forEach(l => {
-        const origin = [l.originCity, l.originState].filter(Boolean).join(', ');
-        const dest   = [l.destCity,   l.destState  ].filter(Boolean).join(', ');
-        rows.push([c.dot, mc, e(c.name), e(c.city||''), c.state, c.phone||'', c.status, origin, dest, c.addedAt]);
-      });
-    }
-  }
-  dlCSV(rows,`network_${today()}.csv`);
-  showToast(`Exported ${onboarded.length} carriers`);
-}
 
 async function resyncAllCarriers() {
   if (!outreachList.length) { showToast('No carriers to sync'); return; }
@@ -2042,7 +1944,6 @@ async function resyncAllCarriers() {
 
   saveOutreach();
   renderOutreach();
-  renderNetworkList();
 
   if (btn) {
     btn.disabled    = false;
@@ -2364,10 +2265,7 @@ function openDetail(carrier) {
   const addBtn  = document.getElementById('dp-add-btn');
   const panel   = window.activePanel || 'search';
 
-  if (panel === 'network') {
-    // From Our Network — carrier is already onboarded, no add button needed
-    addBtn.style.display = 'none';
-  } else if (panel === 'outreach') {
+  if (panel === 'outreach') {
     // From Outreach List — already saved, no need to re-add
     addBtn.style.display = 'none';
   } else {
@@ -2788,9 +2686,6 @@ function saveLanes(dot, lanes) {
 
   try { localStorage.setItem('lanes_' + dot, JSON.stringify(lanes)); } catch(e) {}
 
-  // Refresh the network map live whenever lanes change
-  if (window.networkMapInitialized) refreshNetworkMapColors();
-
 }
 
 function renderLanes(dot) {
@@ -3122,314 +3017,8 @@ const STATE_CENTROIDS = {
   MEX:[23.6,-102.6],CAN:[56.1,-96.3]
 };
 
-function getNetworkLaneData() {
-  // Collect all lanes from all onboarded carriers
-  const onboarded = outreachList.filter(c => c.status === 'onboarded' || c.status === 'trusted');
-  const lanes = [];
-  const originStates = new Set();
-  const destStates   = new Set();
-  for (const carrier of onboarded) {
-    const carrierLanes = (() => { try { return JSON.parse(localStorage.getItem('lanes_' + carrier.dot) || '[]'); } catch(e) { return []; } })();
-    for (const lane of carrierLanes) {
-      if (lane.originState) originStates.add(lane.originState);
-      if (lane.destState)   destStates.add(lane.destState);
-      if (lane.originState && lane.destState) {
-        lanes.push({ origin: lane.originState, dest: lane.destState, carrier: carrier.name });
-      }
-    }
-  }
-  return { lanes, originStates, destStates };
-}
 
-function initNetworkMap() {
 
-  if (window.networkMapInitialized) return;
-
-  window.networkMapInitialized = true;
-
-  window.networkLeafletMap = L.map('us-map-network', {
-
-    center: [39.5, -98.5], zoom: 4,
-
-    scrollWheelZoom: false, preferCanvas: false,
-
-    zoomControl: true, attributionControl: false,
-
-  });
-
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-
-    maxZoom: 19,
-
-  }).addTo(window.networkLeafletMap);
-
-  fetch('https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json')
-
-    .then(r => r.json())
-
-    .then(geo => {
-
-      window.networkStatesLayer = L.geoJson(geo, {
-
-        style: () => ({
-
-          fillColor: '#EBF5FB', weight: 1, color: '#ffffff', fillOpacity: 0.6,
-
-        }),
-
-        onEachFeature: (feature, layer) => {
-
-          const fullName = feature.properties.name;
-
-          const code = STATE_ABBR[fullName];
-
-          if (!code) return;
-
-          layer.bindTooltip(() => {
-
-            const { originStates, destStates } = getNetworkLaneData();
-            const isOrigin = originStates.has(code);
-            const isDest   = destStates.has(code);
-            const cnt = outreachList.filter(c => c.state === code && (c.status === 'onboarded' || c.status === 'trusted')).length;
-            let tip = `<strong>${fullName} (${code})</strong>`;
-            if (cnt > 0) tip += `<br/>🏢 ${cnt} onboarded carrier${cnt !== 1 ? 's' : ''}`;
-            if (isOrigin) tip += `<br/>📍 Lane origin`;
-            if (isDest)   tip += `<br/>🏁 Lane destination`;
-            if (!cnt && !isOrigin && !isDest) tip += `<br/>No activity`;
-            return tip;
-
-          }, { sticky: true });
-
-          layer.on({
-
-            mouseover: (e) => {
-              const _code = STATE_ABBR[e.target.feature.properties.name];
-              e.target.setStyle({ weight: 2.5, color: '#32AAE1', fillOpacity: 1 });
-            },
-            mouseout: (e) => {
-              // Restore computed color without wiping it via resetStyle
-              const _code = STATE_ABBR[e.target.feature.properties.name];
-              e.target.setStyle({ weight: 1, color: '#ffffff' });
-              applyNetworkStateColor(e.target, _code);
-            },
-
-          });
-
-        }
-
-      }).addTo(window.networkLeafletMap);
-
-      // Lane arcs layer group (drawn on top)
-      window.networkLanesLayer = L.layerGroup().addTo(window.networkLeafletMap);
-
-      refreshNetworkMapColors();
-
-    });
-
-}
-
-function refreshNetworkMapColors() {
-
-  if (!window.networkStatesLayer) return;
-
-  const { originStates, destStates } = getNetworkLaneData();
-
-  window.networkStatesLayer.eachLayer(layer => {
-    const code = STATE_ABBR[layer.feature.properties.name];
-    if (!code) return;
-    applyNetworkStateColor(layer, code);
-  });
-
-  // Redraw lane arcs
-  drawNetworkLaneArcs();
-
-}
-
-// ── Compute and store the fill color for a state layer ───────────────
-function applyNetworkStateColor(layer, code) {
-  const { originStates, destStates } = getNetworkLaneData();
-  const isOrigin = originStates.has(code);
-  const isDest   = destStates.has(code);
-  const hasBoth  = isOrigin && isDest;
-  let fill, opacity;
-  if (hasBoth) {
-    // Both origin AND destination → blue
-    fill = '#32AAE1'; opacity = 0.35;
-  } else if (isOrigin || isDest) {
-    // Only origin or only destination → pink
-    fill = '#E60080'; opacity = 0.30;
-  } else {
-    const cnt = outreachList.filter(c => c.state === code && (c.status === 'onboarded' || c.status === 'trusted')).length;
-    if (cnt > 0) {
-      // Onboarded carrier, no lanes → red-ish
-      fill = '#c03535'; opacity = 0.28;
-    } else {
-      fill = '#EBF5FB'; opacity = 0.5;
-    }
-  }
-  layer.setStyle({ fillColor: fill, fillOpacity: opacity });
-}
-
-function drawNetworkLaneArcs() {
-
-  if (!window.networkLanesLayer) return;
-
-  window.networkLanesLayer.clearLayers();
-
-  const { lanes } = getNetworkLaneData();
-
-  // Deduplicate lanes by origin→dest pair, count frequency
-  const laneMap = {};
-  for (const lane of lanes) {
-    const key = lane.origin + '→' + lane.dest;
-    if (!laneMap[key]) laneMap[key] = { origin: lane.origin, dest: lane.dest, count: 0, carriers: [] };
-    laneMap[key].count++;
-    laneMap[key].carriers.push(lane.carrier);
-  }
-
-  for (const key of Object.keys(laneMap)) {
-    const { origin, dest, count, carriers } = laneMap[key];
-    const p1 = STATE_CENTROIDS[origin];
-    const p2 = STATE_CENTROIDS[dest];
-    if (!p1 || !p2) continue;
-
-    // Build a curved arc
-    const arcPoints = buildArc([p1[0], p1[1]], [p2[0], p2[1]], 16);
-
-    // Line width scales with frequency
-    const weight = Math.min(1 + count * 0.5, 3);
-
-    const polyline = L.polyline(arcPoints, {
-      color: '#32AAE1',
-      weight: weight,
-      opacity: 0.80,
-      smoothFactor: 1,
-    });
-
-    const uniqueCarriers = [...new Set(carriers)].join(', ');
-    const tooltipHtml = `<strong>${origin} → ${dest}</strong><br/>${count} lane${count !== 1 ? 's' : ''}<br/><span style="font-size:10px;color:#666;">${uniqueCarriers}</span>`;
-    polyline.bindTooltip(tooltipHtml, { sticky: true });
-    polyline.addTo(window.networkLanesLayer);
-
-    // Origin circle — blue outline
-    const originCircle = L.circleMarker([p1[0], p1[1]], {
-      radius: 3 + Math.min(count, 2),
-      color: '#1e8ab8',
-      weight: 1.5,
-      fillColor: '#32AAE1',
-      fillOpacity: 0.9,
-      interactive: false,
-    });
-    originCircle.addTo(window.networkLanesLayer);
-
-    // Destination circle — pink/magenta fill
-    const destCircle = L.circleMarker([p2[0], p2[1]], {
-      radius: 3 + Math.min(count, 2),
-      color: '#a8005a',
-      weight: 1.5,
-      fillColor: '#E60080',
-      fillOpacity: 0.9,
-      interactive: false,
-    });
-    destCircle.addTo(window.networkLanesLayer);
-  }
-
-}
-
-// Build a smooth arc between two lat/lng points using a quadratic bezier
-function buildArc(from, to, steps) {
-  const points = [];
-  // Control point: midpoint elevated slightly north/perpendicular
-  const midLat = (from[0] + to[0]) / 2;
-  const midLng = (from[1] + to[1]) / 2;
-  const dx = to[1] - from[1];
-  const dy = to[0] - from[0];
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  // Offset perpendicular to the line for curve
-  const curvature = dist * 0.18;
-  const perpLat = midLat + curvature * (dx / (dist || 1));
-  const perpLng = midLng - curvature * (dy / (dist || 1));
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const lat = (1-t)*(1-t)*from[0] + 2*(1-t)*t*perpLat + t*t*to[0];
-    const lng = (1-t)*(1-t)*from[1] + 2*(1-t)*t*perpLng + t*t*to[1];
-    points.push([lat, lng]);
-  }
-  return points;
-}
-
-
-
-function renderNetworkList() {
-
-  refreshNetworkMapColors();
-  // Lane arcs are redrawn inside refreshNetworkMapColors → drawNetworkLaneArcs
-
-  const container = document.getElementById('network-list');
-
-  const lbl       = document.getElementById('network-lbl');
-
-  const onboarded = outreachList.filter(c => c.status === 'onboarded');
-
-  lbl.textContent = onboarded.length
-
-    ? `${onboarded.length} onboarded carrier${onboarded.length !== 1 ? 's' : ''}`
-
-    : 'Onboarded Carriers';
-
-  if (!onboarded.length) {
-
-    container.innerHTML = `<div class="state-box"><div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><circle cx="19" cy="19" r="3"/><circle cx="5" cy="19" r="3"/><path d="M12 8v3m0 0-5.5 5.5M12 11l5.5 5.5"/></svg></div><div class="st">No onboarded carriers yet</div><div class="ss">Carriers marked as <strong>Onboarded</strong> in the Outreach List will appear here.</div></div>`;
-
-    return;
-
-  }
-
-  container.innerHTML = onboarded.map(c => {
-
-    let laneCount = 0;
-
-    try { laneCount = JSON.parse(localStorage.getItem('lanes_' + c.dot) || '[]').length; } catch(e) {}
-
-    return `
-
-    <div class="ocard" onclick="openDetailByDot('${c.dot}')" style="cursor:pointer;">
-
-      <div style="flex:1;min-width:0;">
-
-        <div class="oname">${h(c.name)}</div>
-
-        <div class="ometa">
-
-          <span>DOT ${c.dot}</span>
-
-          <span>${c.city ? h(c.city) + ', ' : ''}${c.state}</span>
-
-          <span>${c.phone || 'no phone'}</span>
-
-          ${c.mc?`<span>MC-${c.mc}</span>`:''}
-
-          ${c.powerUnits?`<span>🚛 ${c.powerUnits} units</span>`:''}
-
-          ${c.drivers?`<span>👤 ${c.drivers} drivers</span>`:''}
-
-        </div>
-
-      </div>
-
-      <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex-shrink:0;margin-left:12px;">
-
-        <span style="font-size:18px;font-weight:800;color:${laneCount > 0 ? 'var(--blue)' : 'var(--text3)'};">${laneCount}</span>
-
-        <span style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;">lane${laneCount !== 1 ? 's' : ''}</span>
-
-      </div>
-
-    </div>
-
-  `}).join('');
-
-}
 
 function refreshInlineMap() {
 
